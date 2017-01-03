@@ -9,8 +9,7 @@ Matrix::Matrix() = default;
 Vector* initialize_matrix(int n_rows, int n_cols) {
 	Vector* matrix = new Vector[n_cols];
 	for (int i = 0; i < n_cols; i++) {
-		Vector v(n_rows);
-		matrix[n_cols] = v;
+		matrix[n_cols] = Vector(n_rows);
 	}
 	return matrix;
 }
@@ -36,9 +35,9 @@ Matrix::Matrix(int c, int r, float val) {
 Matrix::Matrix(Vector v, Vector u) {
 	cols = v.get_length();
 	rows = u.get_length();
-
+	values = new Vector[cols];
 	for (int i = 0; i < cols; i++) {
-		values[i] = v.multiply(u.get(i));
+		values[i] = u.multiply(v.get(i));
 	}
 
 }
@@ -63,8 +62,8 @@ Matrix::Matrix(int c, int r, float** vals) {
 }
 
 Matrix::~Matrix() {
-	std::cout << "Need to fix delete" << std::endl;
-	
+	//std::cout << "Need to fix delete" << std::endl;
+	int a = 1;
 	/*
 	for (int i = 0; i < cols; i++) {
 		delete values[cols];
@@ -135,11 +134,13 @@ void Matrix::print() {
 }
 
 Matrix Matrix::multiply(float mult) {
-	Vector* vals = initialize_matrix(rows, cols);
-
+	Vector* vals = new Vector[cols];
+	float temp;
 	for (int i = 0; i < cols; i++) {
+		vals[i] = Vector(rows, 0.0f);
 		for (int j = 0; j < rows; j++) {
-			vals[i].set(j, values[i].get(j)*mult); 
+			temp = values[i].get(j)*mult;
+			vals[i].set(j, temp); 
 		}
 	}
 	Matrix m(cols, rows, vals);
@@ -182,21 +183,32 @@ void Matrix::set_all(float val) {
 	}
 }
 
-Matrix* Matrix::sub(Matrix &m) {
+Matrix Matrix::sub(Matrix m) {
 	Vector* _result = new Vector[cols];
 	for (int i = 0; i < cols; i++) {
 		_result[i] = values[i].sub(m.get_col(i));
 	}
 	Matrix result(cols, rows, _result);
-	return &result;
+	return result;
 }
 
 void Matrix::add_ip(Matrix m) {
 	if (m.get_c() != cols || m.get_r() != rows) {
-		std::cerr << "dimension mismatch";
+		if (m.get_c() == rows && m.get_r() == cols) {
+			for (int i = 0; i < cols; i++) {
+				for (int j = 0; j < rows; j++) {
+					values[i].set(j, values[i].get(j) + m.get(j, i));
+				}
+			}
+		}	
+		else {
+			std::cerr << "dimension mismatch";
+		}
 	}
-	for (int i = 0; i < cols; i++) {
-		values[i].add_ip(m.get_col(i));
+	else {
+		for (int i = 0; i < cols; i++) {
+			values[i].add_ip(m.get_col(i));
+		}
 	}
 }
 
@@ -216,7 +228,9 @@ float Matrix::sum_squared() {
 
 Vector Matrix::multiply(Vector v) {
 
-	if (v.get_length() != cols) { std::cerr << "Dimension mismatch, cols: "<< cols << " vlength: " << v.get_length() << std::endl; }
+	if (v.get_length() != cols) { 
+		std::cerr << "Dimension mismatch, cols: "<< cols << " vlength: " << v.get_length() << std::endl; 
+	}
 	float* zeros = new float[rows];
 	for (int j = 0; j < rows; j++) {
 		zeros[j] = 0.0f;

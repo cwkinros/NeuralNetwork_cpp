@@ -53,7 +53,6 @@ public:
 
 	//mutators?
 	void set(int c, int r, float value);
-	void set_col(int c, float* vals);
 	void set_col(int c, Vector v);
 	void set_all(float value);
 	float sum_squared();
@@ -70,7 +69,7 @@ public:
 	Vector multiply(Vector v);
 	Vector pre_multiply(Vector v);
 
-	Matrix* sub(Matrix& m);
+	Matrix sub(Matrix m);
 	void add_ip(Matrix m);
 	void sub_ip(Matrix m);
 
@@ -81,7 +80,7 @@ public:
 	~Matrix();
 private:
 	int cols;
-	int rows;
+	int rows;	
 	Vector* values;
 };
 

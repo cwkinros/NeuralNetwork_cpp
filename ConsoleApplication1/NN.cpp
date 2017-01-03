@@ -1,123 +1,142 @@
 #include "NN.h"
 #include <iostream>
 
+using namespace std;
 NeuralNetwork::NeuralNetwork() {
 	head_set = false;
 	tail_set = false;
-	this->initialize_params(2, 1, 2);
-	this->initialize_layers(10);
+	initialize_params(2, 1, 2);
+	initialize_layers(10);
 }
 
 NeuralNetwork::NeuralNetwork(int n_i, int n_o) {
 	head_set = false;
 	tail_set = false;
-	this->initialize_params(n_i, n_o, 2);
-	this->initialize_layers(10);
+	initialize_params(n_i, n_o, 2);
+	initialize_layers(10);
 }
 
 NeuralNetwork::NeuralNetwork(int n_i, int n_o, int n_l) {
 	head_set = false;
 	tail_set = false;
-	this->initialize_params(n_i, n_o, n_l);
-	this->initialize_layers(10);
+	initialize_params(n_i, n_o, n_l);
+	initialize_layers(10);
 }
 
-NeuralNetwork::NeuralNetwork(Layer h) {
-	input_size = h.get_input_n();
-	
-	Layer current = h;
-	head = &h;
-	int count = 1;
-	while (current.get_next().get_output_n() != 0) {
-		current = current.get_next();
-		count++;
-	}
-	n_layers = count;
-	tail = &current;
-	output_size = current.get_output_n();
-
-}
 
 void NeuralNetwork::initialize_params(int n_i, int n_o, int n_l) {
 	input_size = n_i;
 	output_size = n_o;
 	n_layers = n_l;
+	Layers = new Layer[n_l];
 }
 
 void NeuralNetwork::initialize_layers(int n) {
 	if (n_layers == 1) {
-		Layer head(output_size, 0, input_size);
-		Layer* tail = &head;
+		Layers[0] = Layer(output_size, 0, input_size);
 	}
 	else {
-		Layer last(n, 0, input_size);
-		head = &last;
-		Layer* next = nullptr;
-		Layer* previous = nullptr;
+		Layers[0] = Layer(n, 0, input_size);
+		Layer* last = &Layers[0];
+		Layer* next;
+		Layer* previous;
+		Layer new_node;
 		for (int i = 1; i < n_layers - 1; i++) {
-			Layer new_node(n, 0,  n);
-			next = &new_node;
-			last.set_next(next);
-			previous = &last;
-			new_node.set_previous(previous);
-			last = new_node;
+		    Layers[i] = Layer(n, 0,  n);
+			next = &Layers[i];
+			last->set_next(next);
+			previous = last;
+			Layers[i].set_previous(previous);
+			last = &Layers[i];
 		}
-		Layer tail_2b(output_size, 0, n);
-		tail = &tail_2b;
-		next = &tail_2b;
-		last.set_next(next);
-		previous = &last;
-		tail->set_previous(previous);
+		Layers[n_layers-1] = Layer(output_size, 0, n);
+		last->set_next(&Layers[n_layers - 1]);
+		Layers[n_layers - 1].set_previous(last);
+
+		Layer last_one = Layers[n_layers - 1];
+
+		previous = NULL;
+		next = NULL;
+		last = NULL;
+		int a = 0;
 	}
-	head_set = true;
-	tail_set = true;
+	cout << "layer dimensions: " << endl;
+	for (int i = 0; i < n_layers; i++) {
+		cout << "layer: " << i << " input n: " << Layers[i].get_input_n() << " output n: " << Layers[i].get_output_n() << endl;
+	}
+	int b = 0;
 }
 
-Matrix NeuralNetwork::forward_prop(Matrix layer_input) {
-	Layer* layer = this->head;
-	Matrix result = layer_input;
-	while (layer->get_output_n() != 0) {
-		result = layer->output(result);
-		layer = &(layer->get_next());
+Matrix* NeuralNetwork::forward_prop(Matrix* layer_input) {
+	Layer* layer = &Layers[0];
+	Matrix* result = layer_input;
+	while (layer) {
+		result = &(layer->output(*result));
+		layer = layer->get_next();
 	}
 	return result;
 }
 
-void NeuralNetwork::backward_prop(Matrix errors) {
-	Layer current = *tail;
-	Matrix* last_errors = &errors;
-	while (current.get_output_n() != 0) {
-		last_errors = &(current.back_prop(*(last_errors)));
-		current = current.get_previous();
+void NeuralNetwork::backward_prop(Matrix* errors) {
+	Layer* current;
+	if (n_layers == 1) {
+		current = &Layers[0];
+	}
+	else { current = &Layers[n_layers-1]; }
+	Matrix* last_errors = errors;
+	while (current && current->get_output_n() != 0) {
+		last_errors = &(current->back_prop(*(last_errors)));
+		current = current->get_previous();
 	}
 }
 
 void NeuralNetwork::step(float learning_rate) {
-	Layer current = *head;
-	while (current.get_output_n() != 0) {
-		current.step(learning_rate);
+	Layer* current = &Layers[0];
+	while (current) {
+		current->step(learning_rate);
+		current = current->get_next();
 	}
 }
 
-void NeuralNetwork::train_GD(Matrix &input, Matrix &expected_output) {
+void break_head() {
+	int a = 1;
+}
+
+float sum_matrix(Matrix* m) {
+	float sum = 0.0f;
+	for (int i = 0; i < m->get_c(); i++) {
+		for (int j = 0; j < m->get_r(); j++) {
+			sum += abs(m->get(i, j));
+		}
+	}
+	return sum;
+}
+
+void NeuralNetwork::train_GD(Matrix* input, Matrix* expected_output) {
 	Matrix* out;
 	Matrix* errors;
-	float lr = 0.01f;
-	for (int i = 0; i < 200; i++) {
-		out = this->forward_prop(input);
-		errors = expected_output.sub(*out);
-		this->backward_prop(*errors);
-		this->step(lr);
-		std::cout << "error: " << this->test(input, expected_output) << std::endl;
+	float error;
+	float mult = 0.0001f;
+	float lr;
+	for (int i = 0; i < 1000; i++) {
+		lr = mult; // so that you can choose to adjust lr with iteration #
+		out = forward_prop(input);
+		errors = &(expected_output->sub(*out));
+		error = sum_matrix(errors);
+		backward_prop(errors);
+		step(lr);
+		std::cout << "error: " << error << std::endl;
 	}
 }
 
+
+
 float NeuralNetwork::test(Matrix input, Matrix expected_output) {
-	Matrix out = this->apply(input);
+	Matrix out = apply(input);
 	Matrix errors = expected_output.sub(out);
-	return errors.sum_squared();
+	return (errors).sum_squared();
 }
 
 Matrix NeuralNetwork::apply(Matrix input) {
-	return this->forward_prop(input);
+	return input;//this->forward_prop(&input);
 }

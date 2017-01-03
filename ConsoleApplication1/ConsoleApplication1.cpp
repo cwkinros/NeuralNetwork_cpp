@@ -51,12 +51,12 @@ int main()
 {
 
 	/* we want to make a two layer neural network with 2 inputs, 10 nodes in the hidden layer and 1 output
-	* 
+	*/
 
 	float v1[2] = { 1.0f,2.0f };
-	float o1[1] = { 3.0f };
+	float o1[1] = { 6.0f };
 	float v2[2] = { 2.0f,3.0f };
-	float o2[1] = { 5.0f };
+	float o2[1] = { 10.0f };
 	Vector input1(2, v1);
 	Vector input2(2, v2);
 	Vector output1(1, o1);
@@ -66,10 +66,10 @@ int main()
 	Matrix inputs(2, 2, input_data);
 	Matrix outputs(2, 1, output_data);
 
-	NeuralNetwork nn(2, 1);
-	
-	nn.train_GD(inputs, outputs);
-	*/
+
+	NeuralNetwork nn(2,1,9);
+	cout << "weights we would expect: 1 and 1" << endl;
+	nn.train_GD(&inputs, &outputs);
 
 
 

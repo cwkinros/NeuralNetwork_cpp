@@ -7,6 +7,7 @@ public:
 	};
 	Layer(int n, int non_lin_type, int input_size);
 	Layer(int n, int non_lin_type, Matrix W, Matrix GradWi);
+	~Layer();
 
 	int get_input_n();
 	int get_output_n();
@@ -19,8 +20,8 @@ public:
 	Matrix back_prop(Matrix input);
 	void set_next(Layer* l);
 	void set_previous(Layer* l);
-	Layer get_next();
-	Layer get_previous();
+	Layer* get_next();
+	Layer* get_previous();
 
 private:
 	int n;
@@ -31,6 +32,6 @@ private:
 	Matrix Inputs;
 	Layer* Next;
 	Layer* Previous;
-	Layer* Empty;
+
 
 };
