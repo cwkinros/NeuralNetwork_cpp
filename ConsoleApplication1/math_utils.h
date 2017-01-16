@@ -77,7 +77,7 @@ public:
 	void multiply_ip(float mult);
 	void multiply_ip(int mult);
 	void print();
-	~Matrix();
+
 private:
 	int cols;
 	int rows;	

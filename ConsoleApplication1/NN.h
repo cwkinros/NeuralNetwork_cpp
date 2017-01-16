@@ -23,9 +23,9 @@ private:
 	int output_size;
 	int input_size;
 	int n_layers;
-	Layer head;
-	Layer* Layers;
+	Layer_fs head;
+	Layer_fs* Layers;
 	bool head_set;
 	bool tail_set;
-	Layer tail;
+	Layer_fs tail;
 };

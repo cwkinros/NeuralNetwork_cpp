@@ -28,32 +28,33 @@ void NeuralNetwork::initialize_params(int n_i, int n_o, int n_l) {
 	input_size = n_i;
 	output_size = n_o;
 	n_layers = n_l;
-	Layers = new Layer[n_l];
+	Layers = new Layer_fs[n_l];
 }
+
 
 void NeuralNetwork::initialize_layers(int n) {
 	if (n_layers == 1) {
-		Layers[0] = Layer(output_size, 0, input_size);
+		Layers[0] = Layer_fs(output_size, 0, input_size);
 	}
 	else {
-		Layers[0] = Layer(n, 0, input_size);
-		Layer* last = &Layers[0];
-		Layer* next;
-		Layer* previous;
-		Layer new_node;
+		Layers[0] = Layer_fs(n, 0, input_size);
+		Layer_fs* last = &Layers[0];
+		Layer_fs* next;
+		Layer_fs* previous;
+		Layer_fs new_node;
 		for (int i = 1; i < n_layers - 1; i++) {
-		    Layers[i] = Layer(n, 0,  n);
+		    Layers[i] = Layer_fs(n, 0,  n);
 			next = &Layers[i];
-			last->set_next(next);
+			last->set_next(next);	
 			previous = last;
 			Layers[i].set_previous(previous);
 			last = &Layers[i];
 		}
-		Layers[n_layers-1] = Layer(output_size, 0, n);
+		Layers[n_layers-1] = Layer_fs(output_size, 0, n);
 		last->set_next(&Layers[n_layers - 1]);
 		Layers[n_layers - 1].set_previous(last);
 
-		Layer last_one = Layers[n_layers - 1];
+		Layer_fs last_one = Layers[n_layers - 1];
 
 		previous = NULL;
 		next = NULL;
@@ -68,7 +69,7 @@ void NeuralNetwork::initialize_layers(int n) {
 }
 
 Matrix* NeuralNetwork::forward_prop(Matrix* layer_input) {
-	Layer* layer = &Layers[0];
+	Layer_fs* layer = &Layers[0];
 	Matrix* result = layer_input;
 	while (layer) {
 		result = &(layer->output(*result));
@@ -78,7 +79,7 @@ Matrix* NeuralNetwork::forward_prop(Matrix* layer_input) {
 }
 
 void NeuralNetwork::backward_prop(Matrix* errors) {
-	Layer* current;
+	Layer_fs* current;
 	if (n_layers == 1) {
 		current = &Layers[0];
 	}
@@ -91,7 +92,7 @@ void NeuralNetwork::backward_prop(Matrix* errors) {
 }
 
 void NeuralNetwork::step(float learning_rate) {
-	Layer* current = &Layers[0];
+	Layer_fs* current = &Layers[0];
 	while (current) {
 		current->step(learning_rate);
 		current = current->get_next();
@@ -116,9 +117,9 @@ void NeuralNetwork::train_GD(Matrix* input, Matrix* expected_output) {
 	Matrix* out;
 	Matrix* errors;
 	float error;
-	float mult = 0.0001f;
+	float mult = 0.0000000000000001f;
 	float lr;
-	for (int i = 0; i < 1000; i++) {
+	for (int i = 0; i < 100000; i++) {
 		lr = mult; // so that you can choose to adjust lr with iteration #
 		out = forward_prop(input);
 		errors = &(expected_output->sub(*out));
@@ -129,8 +130,6 @@ void NeuralNetwork::train_GD(Matrix* input, Matrix* expected_output) {
 	}
 }
 
-
-
 float NeuralNetwork::test(Matrix input, Matrix expected_output) {
 	Matrix out = apply(input);
 	Matrix errors = expected_output.sub(out);
@@ -138,5 +137,5 @@ float NeuralNetwork::test(Matrix input, Matrix expected_output) {
 }
 
 Matrix NeuralNetwork::apply(Matrix input) {
-	return input;//this->forward_prop(&input);
+	return input; //this->forward_prop(&input);
 }

@@ -61,16 +61,6 @@ Matrix::Matrix(int c, int r, float** vals) {
 	}
 }
 
-Matrix::~Matrix() {
-	//std::cout << "Need to fix delete" << std::endl;
-	int a = 1;
-	/*
-	for (int i = 0; i < cols; i++) {
-		delete values[cols];
-	}
-	delete values;
-	*/
-}
 
 void Matrix::set(int c, int r, float value) {
 	if (c >= cols || r >= rows) { std::cerr << "Indices out of bounds" << std::endl; }

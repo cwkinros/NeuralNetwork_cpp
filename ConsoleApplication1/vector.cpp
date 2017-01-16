@@ -24,6 +24,7 @@ Vector::Vector(int size, float* ptr) {
 	values = ptr;
 }
 
+
 void Vector::set(int i, float val) {
 	values[i] = val;
 }
