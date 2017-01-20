@@ -239,7 +239,7 @@ float test1_lecun(string start_filename, string finished_filename) {
 
 	// training
 	cout << "begin training using GD" << endl;
-	nn.train_GD(arr, labels,1000,0.1f,false);
+	nn.train_GD(arr, labels,1000,0.1f,false,"");
 	
 
 	filename_input = "t10k-images.idx3-ubyte";
@@ -250,6 +250,52 @@ float test1_lecun(string start_filename, string finished_filename) {
 	ReadMNIST(filename_input, filename_label, 10000, 784, arr, labs);
 	cout << "run test data through nn..." << endl;
 	return nn.accuracy_test(arr, labs);
+}
+
+float mnist_2layer_SGD() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	vec ns(2);
+	ns << 100 << 50 << endr;
+
+
+	NeuralNet nn(784, 10, 2, ns, 4);
+	nn.train_SGD(arr, labels, 10000, 10.0f , 10000.0f, true, "mnist_2layer.txt");
+
+	float accuracy = nn.accuracy_test(arr, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
+}
+
+float mnist_2layer() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	vec ns(2);
+	ns << 100 << 50 << endr;
+
+
+	NeuralNet nn(784, 10, 2, ns, 4);
+	nn.train_GD(arr, labels, 10000, 0.01f, true, "mnist_2layer.txt");
+
+	float accuracy = nn.accuracy_test(arr, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
 }
 
 float simpletest() {
@@ -269,9 +315,9 @@ float simpletest() {
 
 	NeuralNet nn(784, 10, 2, ns, 3);
 	//nn.train_GD(arr, labels, 1000, 0.0000000000000005f, true);
-	nn.train_GD(arr, labels, 20, 0.1f, true);
+	nn.train_GD_Alr(arr, labels, 300, 0.01f, 2.0f, 0.01f, true, "");
 	//nn.print_weights();
-	nn.print_grad();
+	//nn.print_grad();
 	float accuracy = nn.accuracy_test(arr, labelvec);
 	cout << "accuracy of simple test on training set: " << accuracy << endl;
 
@@ -291,6 +337,10 @@ void basic_test() {
 
 	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
 		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
+
 	for (int i = 0; i < outputs.n_elem; i++) {
 		// ie weights should be 1 and 1
 		outputs(0,i) = inputs(0, i) + inputs(1, i);
@@ -302,10 +352,9 @@ void basic_test() {
 	empty.reset();
 
 
-	NeuralNet nn(2, 1, 1, empty, &w);
-	nn.train_GD(inputs, outputs,1000,1.0f, false);
+	NeuralNet nn(2, 1, 1, empty);
+	nn.train_GD_Alr(inputs, outputs,100,1.0f,1.1f, 0.5f, false, "");
 	//cout << "should have weights 1 1" << endl;
-	//nn.print_weights();
 
 	mat results = nn.apply(inputs);
 	bool passed = true;
@@ -336,7 +385,7 @@ void two_layer_test() {
 
 
 	NeuralNet nn(2, 1, 2, hidden);
-	nn.train_GD(inputs, outputs, 1000, 1.0f, false);
+	nn.train_GD(inputs, outputs, 1000, 1.0f, false, "");
 	//nn.print_weights();
 
 	mat results = nn.apply(inputs);
@@ -371,7 +420,7 @@ void two_layer_test_large_hidden() {
 
 
 	NeuralNet nn(2, 1, 2, hidden);
-	nn.train_GD(inputs, outputs, 1000,1.0f, false);
+	nn.train_GD(inputs, outputs, 1000,1.0f, false, "");
 
 	mat results = nn.apply(inputs);
 	//results.print("results: ");
@@ -405,7 +454,7 @@ void seven_layer_test_medium_hidden() {
 
 
 	NeuralNet nn(2, 1, 7, hidden);
-	nn.train_GD(inputs, outputs, 1000, 1.0f, false);
+	nn.train_GD(inputs, outputs, 1000, 1.0f, false, "");
 
 	mat results = nn.apply(inputs);
 	//results.print("results: ");
@@ -427,8 +476,13 @@ void basic_sigmoid_test() {
 	mat inputs(2, 10);
 	mat outputs(1, 10);
 
+
 	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
 		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
 	float temp;
 	for (int i = 0; i < outputs.n_elem; i++) {
 		// ie weights should be 1 and 1
@@ -447,11 +501,14 @@ void basic_sigmoid_test() {
 	empty.reset();
 
 
-	NeuralNet nn(2, 1, 1, empty, 3);
-	nn.train_GD(inputs, outputs, 200, 0.0000001f, true);
-	//cout << "should have weights 1 1" << endl;
-	nn.print_weights();
-	nn.print_grad();
+	NeuralNet nn(2, 1, 1, empty, 3, &w);
+	//cout << "initial weights: " << endl;
+	//nn.print_weights();
+	nn.train_GD_Alr(inputs, outputs, 100, 1.0f, 1.1f, 0.5f, true, "");
+	//cout << "weights" << endl;
+	//nn.print_weights();
+	//cout << "grad: " << endl;
+	//nn.print_grad();
 
 	mat results = nn.apply(inputs);
 	bool passed = true;
@@ -467,31 +524,28 @@ void basic_sigmoid_test() {
 	}
 }
 
+void redo_io_files(int n_examples) {
+	mat arr;
+	vec labels;
+	ReadMNIST("train-images.idx3-ubyte", "train-labels.idx1-ubyte", 60000, 784, arr, labels);
+	save_file("input.txt", "output.txt", arr, labels, n_examples);
+}
+
 void runtests() {
 	basic_test();
 	two_layer_test();
 	two_layer_test_large_hidden();
 	seven_layer_test_medium_hidden();
-
 	basic_sigmoid_test();
 }
 
 int main()
 {
 
-	/* we want to make a two layer neural network with 2 inputs, 10 nodes in the hidden layer and 1 output
 	
-	*/
-	
-	//float error = test1_lecun("test1_lecun_initial_weights.txt", "not_used");
-//	float error = simpletest();
+	//redo_io_files(300);
 
-
-	//runtests();
-	//float accuracy = simpletest();
-
-	//basic_sigmoid_test();
-	float accuracy = simpletest();
+	float accuracy = mnist_2layer();
 	cout << "should have printed to files... " << endl;
 	std::cout << "Hello World!" << std::endl;
 	system("pause");

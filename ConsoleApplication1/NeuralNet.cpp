@@ -1,5 +1,6 @@
 #include "NeuralNet.h"
 
+
 NeuralNet::NeuralNet() {
 	initialize_params(2, 1, 2);
 	initialize_layers(10);
@@ -25,6 +26,11 @@ NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, int nlin) {
 	initialize_layers(ns, nlin);
 }
 
+NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, int nlin, mat ws[]) {
+	initialize_params(n_i, n_o, n_l);
+	initialize_layers(ns, ws, nlin);
+
+}
 NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, mat ws[]) {
 	initialize_params(n_i, n_o, n_l);
 	initialize_layers(ns, ws);
@@ -133,6 +139,29 @@ void NeuralNet::initialize_layers(vec ns, mat ws[]) {
 	}
 }
 
+void NeuralNet::initialize_layers(vec ns, mat ws[], int nlin) {
+	if (n_layers == 1) {
+		Layers[0] = Layer(output_size, nlin, input_size, ws[0]);
+	}
+	else {
+		Layers[0] = Layer(ns[0], 0, input_size, ws[0]);
+		Layer* last = &Layers[0];
+		Layer* next;
+		Layer* previous;
+		Layer new_node;
+		for (int i = 1; i < n_layers - 1; i++) {
+			Layers[i] = Layer(ns[i], 0, ns[i - 1], ws[i]);
+			next = &Layers[i];
+			last->set_next(next);
+			previous = last;
+			Layers[i].set_previous(previous);
+			last = &Layers[i];
+		}
+		Layers[n_layers - 1] = Layer(output_size, nlin, ns[n_layers - 2], ws[n_layers - 1]);
+		last->set_next(&Layers[n_layers - 1]);
+		Layers[n_layers - 1].set_previous(last);
+	}
+}
 
 
 mat NeuralNet::forward_prop(mat input) {
@@ -154,6 +183,7 @@ void NeuralNet::back_prop(mat dz) {
 		current = &Layers[n_layers - 1];
 	}
 	mat last_dz = dz;
+	//dz.print("2*error: ");
 	while (current && current->get_output_n() != 0) {
 		last_dz = (current->back_prop(last_dz));
 		current = current->get_previous();
@@ -168,7 +198,17 @@ void NeuralNet::step(float lr) {
 	}
 }
 
-void NeuralNet::train_GD(mat input, mat expected_output, int n_steps, float lr, bool print) {
+
+void NeuralNet::train_GD(mat input, mat expected_output, int n_steps, float lr, bool print, string filename) {
+	bool log;
+	ofstream file;
+	if (filename == "") { 
+		log = false; 
+	}
+	else {
+		file.open(filename, ios::out);
+		log = true;
+	}
 	mat out;
 	mat errors;
 	float error;
@@ -179,21 +219,91 @@ void NeuralNet::train_GD(mat input, mat expected_output, int n_steps, float lr, 
 		
 		back_prop(errors);
 		step(lr);
-		if (print){ 
-			error = float(accu(abs(errors))); 
+		if (print) {
+			error = float(accu(abs(errors)));
 			std::cout << "error: " << error << std::endl;
+			if (log) {
+				file << error << endl;
+			}
 		}
-			
+
+	}
+	
+}
+
+void NeuralNet::train_SGD(mat input, mat expected_output, int n_steps, float a, float b, bool print, string filename) {
+	bool log;
+	ofstream file;
+	if (filename == "") {
+		log = false;
+	}
+	else {
+		file.open(filename, ios::out);
+		log = true;
+	}
+	mat out;
+	mat errors;
+	float error;
+	float last_error = INFINITY;
+	float lr = a / b;
+	int m = input.n_cols;
+	int c;
+	for (int i = 0; i < n_steps; i++) {
+		out = forward_prop(input);
+		errors = out - expected_output;
+		c = rand() % m;
+		back_prop(errors.col(c));
+		step(lr);
+		if (print) {
+			error = float(accu(abs(errors)));
+			std::cout << "error: " << error << std::endl;
+			if (log) {
+				file << error << endl;
+			}
+		}
+		lr = a / (b + i);
+
+	}
+}
+
+void NeuralNet::train_GD_Alr(mat input, mat expected_output, int n_steps, float ilr, float inc, float dec, bool print, string filename) {
+	ofstream file;
+	bool log;
+	if (filename == "") {
+		log = false;
+	}
+	else {
+		file.open(filename, ios::out);
+		log = true;
+	}
+	mat out;
+	mat errors;
+	float error;
+	float last_error = INFINITY;
+	float lr = ilr;
+	for (int i = 0; i < n_steps; i++) {
+		out = forward_prop(input);
+		errors = out - expected_output;
+
+		back_prop(errors);
+		step(lr);
+		if (print) {
+			error = float(accu(abs(errors)));
+			std::cout << "error: " << error << std::endl;
+			if (log) {
+				file << error << endl;
+			}
+		}
+
 		error = float(accu(abs(errors)));
 		if (last_error < error) {
-			lr = lr / 2.0f;
+		lr = lr * dec;
 		}
 		else {
-			lr = lr*1.1f;
+		lr = lr* inc;
 		}
 		last_error = error;
 	}
-	
 }
  
 float NeuralNet::test(mat input, mat output) {

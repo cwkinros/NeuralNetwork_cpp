@@ -39,12 +39,13 @@ mat Layer::back_prop(mat dz) {
 	mat grad;
 	mat next_dz(W.n_cols, dz.n_cols);
 	for (unsigned int i = 0; i < dz.n_cols; i++) {
-		dh = dz.col(i)%g1(hs.col(i),i);
+		dh = dz.col(i)%g1(hs.col(i),i,dz.col(i));
 		next_dz.col(i) = W.t()*dh;
-		GradW += GradW + dh*Inputs.col(i).t();
+		GradW += dh*Inputs.col(i).t();
 	}
 	// update GradW
 	GradW = GradW*(1.0f / float(dz.n_cols));
+	//GradW.print("gradW: ");
 	return next_dz;
 }
 
@@ -60,15 +61,19 @@ vec Layer::g(vec input) {
 	case (3) :
 		input = 1.0f / (1.0f + exp(-input));
 		break;
+	case (4) :
+		input = exp(input);
+		input = input / sum(input);
 	default:
 		break;
 	}
 	return input;
 }
 
-vec Layer::g1(vec input, int i) {
+vec Layer::g1(vec input, int i, vec dz) {
 	vec ones(zl.n_rows);
 	ones.fill(1.0f);
+	vec helper;
 	switch (non_lin) {
 	case (1) :
 		input = input * 2.0f;
@@ -77,9 +82,13 @@ vec Layer::g1(vec input, int i) {
 		input.fill(2.0f);
 		break;
 	case (3) :
-		input = zl.col(i)%(-1*zl.col(i) + ones);
+		input = g(input) % (ones - g(input));
+		//input = zl.col(i)%(ones-zl.col(i));
 		break;
+	case (4) :
+		input = zl.col(i)%(dz - sum(dz%zl.col(i)));
 	default :
+		input.fill(1.0f);
 		break;
 	}
 	return input;

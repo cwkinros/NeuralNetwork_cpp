@@ -36,8 +36,6 @@ private:
 	Matrix Inputs;
 	Layer_fs* Next;
 	Layer_fs* Previous;
-
-
 };
 
 
@@ -55,7 +53,7 @@ public:
 	int get_output_n();
 	void step(float step_size);
 	vec g	 (vec input);
-	vec g1	 (vec input, int i);
+	vec g1	 (vec input, int i, vec dz);
 	mat g(mat input);
 	mat output(mat input);
 	mat back_prop(mat input);
