@@ -323,6 +323,12 @@ float NeuralNet::accuracy_test(mat input, vec labels) {
 	return float(correct)*100.0f / float(input.n_cols) ;
 }
 
+void NeuralNet::forwback(mat input, mat expected_output) {
+	mat out = forward_prop(input);
+	mat errors = out - expected_output;
+	back_prop(errors);
+}
+
 mat NeuralNet::apply(mat input) {
 	return forward_prop(input);
 }
@@ -385,7 +391,7 @@ vec NeuralNet::Hv(vec v) {
 		cols = layer->W.n_cols;
 		for (int i = 0; i < rows; i++) {
 			for (int j = 0; j < cols; j++) {
-				hv(l + i + j*rows);
+				hv(l + i + j*rows) = layer->R_dw(i,j);
 			}
 		}
 		layer = layer->get_previous();

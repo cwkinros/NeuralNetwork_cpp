@@ -34,16 +34,19 @@ void Layer::step(float step_size) {
 }
 
 mat Layer::back_prop(mat this_dz) {
+	g1_hs = mat(n, this_dz.n_cols);
+	g2_hs = mat(n, this_dz.n_cols);
 	GradW.fill(0.0f);
 	vec dh;
 	mat grad;
 	mat next_dz(W.n_cols, this_dz.n_cols);
 	for (unsigned int i = 0; i < this_dz.n_cols; i++) {
-		g1_hs.col(i) = g1(hs.col(i), i, this_dz.col(i));
+		g1_hs.col(i) = g1(hs.col(i), i, this_dz.col(i));	
 		dh = this_dz.col(i)%g1_hs.col(i);
 		next_dz.col(i) = W.t()*dh;
 		GradW += dh*Inputs.col(i).t();
 	}
+	g2_hs = g2(hs);
 	// update GradW
 	GradW = GradW*(1.0f / float(this_dz.n_cols));
 	dz = this_dz;
@@ -96,6 +99,29 @@ vec Layer::g1(vec input, int i, vec dz) {
 	return input;
 }
 
+mat Layer::g2(mat input) {
+	mat ones(zl.n_rows,zl.n_cols);
+	ones.fill(1.0f);
+	switch (non_lin) {
+	case (1) :
+		input.fill(2.0f);
+		break;
+	case (2) :
+		input.fill(0.0f);
+		break;
+	case (3) :
+		input = g1_hs % (ones - 2.0f*zl);
+		break;
+	case (4) :
+		// need to fix more than just this
+		input = ones;
+	default:
+		input.fill(0.0f);
+		break;
+	}
+	return input;
+}
+
 mat Layer::g(mat input) {
 	switch (non_lin) {
 	case (1) :
@@ -120,14 +146,16 @@ mat Layer::output(mat input) {
 	return zl;
 }
 
-mat Layer::forwardHv(mat R_input, mat V) {
-	mat _R_h(n,R_input.n_cols);
+mat Layer::forwardHv(mat _R_input, mat V) {
+
+	mat _R_h(n,_R_input.n_cols);
 	_R_h.fill(0.0f);
 	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < R_input.n_rows; j++) {
-			_R_h.row(i) = _R_h.row(i) + W(i, j)*R_input.row(i) + V(i, j)*Inputs.row(j);
+		for (int j = 0; j < _R_input.n_rows; j++) {
+			_R_h.row(i) = _R_h.row(i) + W(i, j)*_R_input.row(i) + V(i, j)*Inputs.row(j);
 		}
 	}
+	R_input = _R_input;
 	mat R_z = g1_hs%_R_h;
 	R_hs = _R_h;
 	return R_z;

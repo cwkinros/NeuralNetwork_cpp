@@ -54,7 +54,7 @@ public:
 	void step(float step_size);
 	vec g	 (vec input);
 	vec g1	 (vec input, int i, vec dz);
-	vec g2(vec input);
+	mat g2(mat inputs);
 	mat g(mat input);
 	mat output(mat input);
 	mat back_prop(mat input);

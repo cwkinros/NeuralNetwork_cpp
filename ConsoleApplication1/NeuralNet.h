@@ -25,6 +25,7 @@ public:
 	void print_weights();
 	void print_grad();
 	mat apply(mat input);
+	void forwback(mat input, mat output);
 	vec Hv(vec v);
 
 private:

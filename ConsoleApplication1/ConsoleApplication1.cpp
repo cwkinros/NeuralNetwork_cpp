@@ -504,7 +504,7 @@ void basic_sigmoid_test() {
 	NeuralNet nn(2, 1, 1, empty, 3, &w);
 	//cout << "initial weights: " << endl;
 	//nn.print_weights();
-	nn.train_GD_Alr(inputs, outputs, 100, 1.0f, 1.1f, 0.5f, true, "");
+	nn.train_GD_Alr(inputs, outputs, 100, 1.0f, 1.1f, 0.5f, false, "");
 	//cout << "weights" << endl;
 	//nn.print_weights();
 	//cout << "grad: " << endl;
@@ -531,12 +531,50 @@ void redo_io_files(int n_examples) {
 	save_file("input.txt", "output.txt", arr, labels, n_examples);
 }
 
+void basic_test_hv() {
+	mat inputs(4, 1);
+	mat outputs(2,1);
+
+	inputs << 1 << endr << 2 << endr << 2 << endr << 1 << endr;
+	outputs << 2 << endr << 4 << endr;
+
+	mat w(2, 4);
+	w << 1 << -1 << 1 << -1 << endr << 1 << 3 << 1 << -2 << endr;
+	vec empty;
+	empty.reset();
+
+	vec v(8);
+	v << 1 << 2 << 0.5 << -1 << -0.5 << 1 << -1 << 3 << endr;
+
+
+	NeuralNet nn(4,2,1);
+	nn.forwback(inputs, outputs);
+	vec hv = nn.Hv(v);
+	//cout << "should have weights 1 1" << endl;
+
+	vec ground_truth(8);
+	ground_truth << 0 << 5 << 0 << 10 << 0 << 10 << 0 << 5 << endr;
+	bool passed = true;
+	for (int i = 0; i < 8; i++) {
+		if (abs(hv(i) - ground_truth(i)) > 0.00001) {
+			passed = false;
+		}
+	}
+	if (passed) {
+		cout << "PASSED basic_test_hv" << endl;
+	}
+	else {
+		cout << "FAILED basic_test_hv" << endl;
+	}
+}
+
 void runtests() {
 	basic_test();
 	two_layer_test();
 	two_layer_test_large_hidden();
 	seven_layer_test_medium_hidden();
 	basic_sigmoid_test();
+	basic_test_hv();
 }
 
 int main()
@@ -544,6 +582,7 @@ int main()
 
 	
 	//redo_io_files(300);
+	runtests();
 
 //	float accuracy = mnist_2layer();
 	cout << "should have printed to files... " << endl;
