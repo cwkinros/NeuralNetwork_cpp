@@ -33,18 +33,20 @@ void Layer::step(float step_size) {
 	W = W - (GradW*step_size);
 }
 
-mat Layer::back_prop(mat dz) {
+mat Layer::back_prop(mat this_dz) {
 	GradW.fill(0.0f);
 	vec dh;
 	mat grad;
-	mat next_dz(W.n_cols, dz.n_cols);
-	for (unsigned int i = 0; i < dz.n_cols; i++) {
-		dh = dz.col(i)%g1(hs.col(i),i,dz.col(i));
+	mat next_dz(W.n_cols, this_dz.n_cols);
+	for (unsigned int i = 0; i < this_dz.n_cols; i++) {
+		g1_hs.col(i) = g1(hs.col(i), i, this_dz.col(i));
+		dh = this_dz.col(i)%g1_hs.col(i);
 		next_dz.col(i) = W.t()*dh;
 		GradW += dh*Inputs.col(i).t();
 	}
 	// update GradW
-	GradW = GradW*(1.0f / float(dz.n_cols));
+	GradW = GradW*(1.0f / float(this_dz.n_cols));
+	dz = this_dz;
 	//GradW.print("gradW: ");
 	return next_dz;
 }
@@ -118,6 +120,28 @@ mat Layer::output(mat input) {
 	return zl;
 }
 
+mat Layer::forwardHv(mat R_input, mat V) {
+	mat _R_h(n,R_input.n_cols);
+	_R_h.fill(0.0f);
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < R_input.n_rows; j++) {
+			_R_h.row(i) = _R_h.row(i) + W(i, j)*R_input.row(i) + V(i, j)*Inputs.row(j);
+		}
+	}
+	mat R_z = g1_hs%_R_h;
+	R_hs = _R_h;
+	return R_z;
+}
+
+mat Layer::backHv(mat R_dz, mat V) {
+	mat R_dh(n, R_dz.n_cols);
+	R_dh = R_dz%g1_hs + dz%g2_hs%R_hs;
+	R_dw = R_dh*Inputs.t() + (dz%g1_hs)*R_input.t();
+	mat R_dz_1(Inputs.n_rows, n);
+	R_dz_1 = W.t()*R_dh + V.t()*(dz%g1_hs);
+	return R_dz_1;
+}
+
 void Layer::set_next(Layer* l) {
 	Next = l;
 }
@@ -149,3 +173,4 @@ void Layer::print_weights() {
 void Layer::print_grad() {
 	GradW.print();
 }
+

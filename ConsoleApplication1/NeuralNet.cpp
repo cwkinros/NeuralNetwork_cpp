@@ -166,6 +166,7 @@ void NeuralNet::initialize_layers(vec ns, mat ws[], int nlin) {
 
 mat NeuralNet::forward_prop(mat input) {
 	Layer* layer = &Layers[0];
+	m = input.n_cols;
 	mat result = input;
 	while (layer){
 		result = layer->output(result);
@@ -197,7 +198,6 @@ void NeuralNet::step(float lr) {
 		current = current->get_next();
 	}
 }
-
 
 void NeuralNet::train_GD(mat input, mat expected_output, int n_steps, float lr, bool print, string filename) {
 	bool log;
@@ -246,7 +246,6 @@ void NeuralNet::train_SGD(mat input, mat expected_output, int n_steps, float a, 
 	float error;
 	float last_error = INFINITY;
 	float lr = a / b;
-	int m = input.n_cols;
 	int c;
 	for (int i = 0; i < n_steps; i++) {
 		out = forward_prop(input);
@@ -332,6 +331,70 @@ void NeuralNet::print_weights() {
 	for (int i = 0; i < n_layers; i++) {
 		Layers[i].print_weights();
 	}
+}
+
+vec NeuralNet::Hv(vec v) {
+	/*
+		I use col by col matrix to vec and layer by layer
+
+		example: V1 = [1,2,3;4,5,6] and V2 = [7,8;9,10]
+		v = [1,4,2,5,3,6,7,9,8,10]
+
+		let l be the starting index for layer l values
+
+		v[l + r + c*n_rows] = Vl(r,c);
+		and vice versa	
+		
+	*/
+
+	vec hv(v.n_elem);
+	Layer* layer = &Layers[0];
+	mat result(layer->get_input_n(),m);
+	result.fill(0.0f);
+	int rows, cols;
+	int l = 0;
+	int* ls = new int[n_layers];
+
+	int c = 0;
+
+	mat* vs = new mat[n_layers];
+	while (layer) {
+		rows = layer->W.n_rows;
+		cols = layer->W.n_cols;
+		vs[c] = mat(rows,cols);
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				vs[c](i, j) = v[l + i + j*rows];
+			}
+		}
+		
+		result = layer->forwardHv(result,vs[c]);
+		layer = layer->get_next();
+		ls[c] = l;
+		l += rows*cols;
+		c ++;
+	}
+
+	layer = &Layers[n_layers - 1];
+	c -= 1;
+
+	while (layer) {
+		result = layer->backHv(result, vs[c]);
+		l = ls[c];
+		rows = layer->W.n_rows;
+		cols = layer->W.n_cols;
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				hv(l + i + j*rows);
+			}
+		}
+		layer = layer->get_previous();
+		c--;
+	}
+
+	return hv;
+
+
 }
 
 void NeuralNet::print_grad() {

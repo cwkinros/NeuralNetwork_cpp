@@ -91,6 +91,8 @@ void NeuralNetwork::backward_prop(Matrix* errors) {
 	}
 }
 
+
+
 void NeuralNetwork::step(float learning_rate) {
 	Layer_fs* current = &Layers[0];
 	while (current) {

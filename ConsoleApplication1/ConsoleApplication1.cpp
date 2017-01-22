@@ -387,7 +387,7 @@ void two_layer_test() {
 	NeuralNet nn(2, 1, 2, hidden);
 	nn.train_GD(inputs, outputs, 1000, 1.0f, false, "");
 	//nn.print_weights();
-
+	 
 	mat results = nn.apply(inputs);
 	//results.print("results: ");
 	//outputs.print("expected results: ");
@@ -545,7 +545,7 @@ int main()
 	
 	//redo_io_files(300);
 
-	float accuracy = mnist_2layer();
+//	float accuracy = mnist_2layer();
 	cout << "should have printed to files... " << endl;
 	std::cout << "Hello World!" << std::endl;
 	system("pause");

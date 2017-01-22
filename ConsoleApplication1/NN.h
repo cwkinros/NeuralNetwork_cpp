@@ -12,7 +12,6 @@ public:
 	void initialize_params(int n_i, int n_o, int n_l);
 	void train_GD(Matrix* input, Matrix* output);
 	float test(Matrix input, Matrix output);
-
 	Matrix apply(Matrix input);
 	//iterate(float step_size);
 private:

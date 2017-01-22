@@ -25,6 +25,7 @@ public:
 	void print_weights();
 	void print_grad();
 	mat apply(mat input);
+	vec Hv(vec v);
 
 private:
 	void initialize_params(int n_i, int n_o, int n_l);
@@ -39,6 +40,7 @@ private:
 	float error;
 	int output_size;
 	int input_size;
+	int m;
 	int n_layers;
 	Layer* Layers;
 };

@@ -54,21 +54,33 @@ public:
 	void step(float step_size);
 	vec g	 (vec input);
 	vec g1	 (vec input, int i, vec dz);
+	vec g2(vec input);
 	mat g(mat input);
 	mat output(mat input);
 	mat back_prop(mat input);
+	
+	mat forwardHv(mat R_input, mat V);
+	mat backHv(mat R_dz, mat V);
 	void set_next(Layer* l);
 	void set_previous(Layer* l);
+	
 	Layer* get_next();
 	Layer* get_previous();
+	mat R_dw; // this is Hv for this layer
+	mat W;
 private:
 	int n;
 	int non_lin;
-	mat W;
 	mat GradW;
 	mat Inputs;
 	mat hs;
 	mat zl;
+	mat dz;
+	mat g2_hs;
+	mat g1_hs;
+	mat R_hs;
+	mat R_input;
+	mat R_dz;
 	Layer* Next;
 	Layer* Previous;
 };
