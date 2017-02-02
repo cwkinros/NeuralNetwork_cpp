@@ -52,6 +52,7 @@ public:
 	int get_input_n();
 	int get_output_n();
 	void step(float step_size);
+	void step_TRM(vec p_star);
 	vec g	 (vec input);
 	vec g1	 (vec input, int i, vec dz);
 	mat g2(mat inputs);
@@ -63,15 +64,15 @@ public:
 	mat backHv(mat R_dz, mat V);
 	void set_next(Layer* l);
 	void set_previous(Layer* l);
-	
+
 	Layer* get_next();
 	Layer* get_previous();
 	mat R_dw; // this is Hv for this layer
 	mat W;
+	mat GradW;
 private:
 	int n;
 	int non_lin;
-	mat GradW;
 	mat Inputs;
 	mat hs;
 	mat zl;

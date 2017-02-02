@@ -351,11 +351,12 @@ void basic_test() {
 	vec empty;
 	empty.reset();
 
+	
 
 	NeuralNet nn(2, 1, 1, empty);
 	nn.train_GD_Alr(inputs, outputs,100,1.0f,1.1f, 0.5f, false, "");
 	//cout << "should have weights 1 1" << endl;
-
+	nn.step_TRM();
 	mat results = nn.apply(inputs);
 	bool passed = true;
 	for (int i = 0; i < 10; i++) {
@@ -384,10 +385,10 @@ void two_layer_test() {
 	hidden << 2 << endr;
 
 
+
 	NeuralNet nn(2, 1, 2, hidden);
 	nn.train_GD(inputs, outputs, 1000, 1.0f, false, "");
 	//nn.print_weights();
-	 
 	mat results = nn.apply(inputs);
 	//results.print("results: ");
 	//outputs.print("expected results: ");

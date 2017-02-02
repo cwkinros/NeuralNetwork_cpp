@@ -41,6 +41,7 @@ void NeuralNet::initialize_params(int n_i, int n_o, int n_l) {
 	output_size = n_o;
 	n_layers = n_l;
 	Layers = new Layer[n_l];
+	ballSize = 1000;
 }
 
 void NeuralNet::initialize_layers(int n) {
@@ -339,6 +340,111 @@ void NeuralNet::print_weights() {
 	}
 }
 
+
+void NeuralNet::train_TRM(mat input, mat expected_output, int n_steps, float bs, bool print, string filename) {
+	vec out;
+	vec errors;
+	ballSize = bs;
+	ofstream file;
+	bool log;
+	float n1 = 0.10, n2 = 0.25, n3 = 0.25;
+	if (filename == "") {
+		log = false;
+	}
+	else {
+		file.open(filename, ios::out);
+		log = true;
+	}
+	int next_error;
+	out = forward_prop(input);
+	errors = out - expected_output;
+	back_prop(errors);
+	error = float(accu((errors) % (errors)));
+	for (int i = 0; i < n_steps; i++) {
+		while (true) {
+			step_TRM();
+			out = forward_prop(input);
+			errors = out - expected_output;
+			back_prop(errors);
+			next_error = float(accu((errors) % (errors)));
+
+		}
+		if (print) {
+			error = float(accu(abs(errors)));
+			std::cout << "error: " << error << std::endl;
+			if (log) {
+				file << error << endl;
+			}
+		}
+
+		error = next_error;
+	}
+}
+
+void NeuralNet::step_TRM() {
+	// it's all about getting info into little vectors and stuff.... oh goodness
+	// vecs can keep expanding i think - look it up
+
+	int size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
+
+	vec g(size);
+	vec eigvec(2*size);
+
+	int count = 0;
+	int l = 0;
+	while (l < n_layers) {
+		for (int j = 0; j < Layers[l].W.n_elem; j++) {
+			g(count) = Layers[l].GradW(j);
+			count++;
+		}
+		l++;
+	}
+	float eigvalue = power_series(eigvec, g);
+	vec Y1 = eigvec.subvec(0, size - 1);
+	vec Y2 = eigvec.subvec(size, size * 2 - 1);
+	int sign = 1;
+	if (dot(g,Y2) < 0) {
+		sign = -1;
+	}
+	vec p_star = -sign*ballSize*Y1 / accu(abs(Y1));
+	
+	l = 0;
+	int n;
+	int current = 0;
+	while (l < n_layers) {
+		n = Layers[l].W.n_elem;
+		Layers[l].step_TRM(p_star.subvec(current, current + n - 1));
+		current += n;
+	}
+
+}
+
+float NeuralNet::power_series(vec &eigvec, vec g) {
+	vec w(eigvec.n_elem);
+	float eigvalue;
+	w = Mv(eigvec, g);
+	for (int k = 0; k < eigvec.n_elem; k++) {
+		eigvec = w / accu(abs(w));
+		w = Mv(eigvec, g);
+		eigvalue = dot(eigvec,w);
+	}
+	return eigvalue;
+}
+
+vec NeuralNet::Mv(vec v, vec g) {
+	vec y1(v.n_elem / 2);
+	vec y2(v.n_elem / 2);
+	y1 = v.subvec(0,(v.n_elem / 2)-1);
+	y2 = v.subvec(v.n_elem / 2, v.n_elem - 1);
+	vec hv(v.n_elem);
+	hv.subvec(0, (v.n_elem / 2) - 1) = -Hv(y1) + g*(g.t()*y2)/ballSize;
+	hv.subvec((v.n_elem / 2), v.n_elem - 1) = y1 - Hv(y2);
+	return hv;
+}
+
 vec NeuralNet::Hv(vec v) {
 	/*
 		I use col by col matrix to vec and layer by layer
@@ -399,8 +505,6 @@ vec NeuralNet::Hv(vec v) {
 	}
 
 	return hv;
-
-
 }
 
 void NeuralNet::print_grad() {

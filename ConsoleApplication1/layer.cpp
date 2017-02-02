@@ -33,6 +33,12 @@ void Layer::step(float step_size) {
 	W = W - (GradW*step_size);
 }
 
+void Layer::step_TRM(vec p_star) {
+	for (int i = 0; i < p_star.n_elem; i++) {
+		W(i) += p_star(i);
+	}
+}
+
 mat Layer::back_prop(mat this_dz) {
 	g1_hs = mat(n, this_dz.n_cols);
 	g2_hs = mat(n, this_dz.n_cols);
@@ -169,6 +175,7 @@ mat Layer::backHv(mat R_dz, mat V) {
 	R_dz_1 = W.t()*R_dh + V.t()*(dz%g1_hs);
 	return R_dz_1;
 }
+
 
 void Layer::set_next(Layer* l) {
 	Next = l;
