@@ -27,10 +27,15 @@ public:
 	mat apply(mat input);
 	void forwback(mat input, mat output);
 	vec Hv(vec v);
+	vec M_squiggle_v(vec v, vec g,float lambda);
 	vec Mv(vec v, vec g);
+	vec cg(vec g);
 	float power_series(vec &eigvec, vec g);
-	void step_TRM();
+	void get_p1_TRM(vec &p_star, vec &g);
+	void set_TRM_parameters(float lowerbound, float upperbound, float shrink, float grow);
 private:
+	void add_p(vec p_star);
+	int size;
 	void initialize_params(int n_i, int n_o, int n_l);
 	void initialize_layers(vec ns, mat ws[], int nlin);
 	void initialize_layers(int n);
@@ -40,7 +45,7 @@ private:
 	mat forward_prop(mat input);
 	void back_prop(mat dz);
 	void step(float lr);
-	float error;
+	double error;
 	float ballSize;
 	int output_size;
 	int input_size;
@@ -48,4 +53,5 @@ private:
 	int num_weights;
 	int n_layers;
 	Layer* Layers;
+	float lb, ub, shrink, grow;
 };

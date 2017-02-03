@@ -356,7 +356,6 @@ void basic_test() {
 	NeuralNet nn(2, 1, 1, empty);
 	nn.train_GD_Alr(inputs, outputs,100,1.0f,1.1f, 0.5f, false, "");
 	//cout << "should have weights 1 1" << endl;
-	nn.step_TRM();
 	mat results = nn.apply(inputs);
 	bool passed = true;
 	for (int i = 0; i < 10; i++) {
@@ -368,6 +367,45 @@ void basic_test() {
 	if (passed) {
 		cout << "PASSED basic test" << endl;
 	}
+}
+
+void two_layer_test_TRM() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	vec hidden(1);
+	hidden << 2 << endr;
+
+
+
+	NeuralNet nn(2, 1, 2, hidden);
+	nn.set_TRM_parameters(0.1, 0.8, 0.7, 1.5);
+	float ballSize = 0.001f;
+	int steps = 1000;
+	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error.txt");
+	nn.print_weights();
+	//nn.print_weights();
+	mat results = nn.apply(inputs);
+	//results.print("results: ");
+	//outputs.print("expected results: ");
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.0001f) {
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED two_layer_test" << endl;
+	}
+
 }
 
 void two_layer_test() {
@@ -505,7 +543,7 @@ void basic_sigmoid_test() {
 	NeuralNet nn(2, 1, 1, empty, 3, &w);
 	//cout << "initial weights: " << endl;
 	//nn.print_weights();
-	nn.train_GD_Alr(inputs, outputs, 100, 1.0f, 1.1f, 0.5f, false, "");
+	nn.train_GD(inputs, outputs, 100000, 0.1f, true, "GD.txt");
 	//cout << "weights" << endl;
 	//nn.print_weights();
 	//cout << "grad: " << endl;
@@ -569,6 +607,109 @@ void basic_test_hv() {
 	}
 }
 
+void basic_test_TRM() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
+
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	mat w(1, 2);
+	w << 0.5 << 1.5 << endr;
+	vec empty;
+	empty.reset();
+
+
+
+	NeuralNet nn(2, 1, 1, empty);
+	nn.set_TRM_parameters(0.25, 0.75, 0.9, 1.1);
+	float ballSize = 0.1f;
+	int steps = 10000;
+	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error.txt");
+	nn.print_weights();
+	//cout << "should have weights 1 1" << endl;
+	mat results = nn.apply(inputs);
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.000001f) {
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED basic test" << endl;
+	}
+
+}
+
+
+void basic_sigmoid_test_TRM() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
+	float temp;
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		temp = inputs(0, i) - inputs(1, i);
+		if (temp > 0) {
+			outputs(0, i) = 1;
+		}
+		else {
+			outputs(0, i) = 0;
+		}
+	}
+
+	mat w(1, 2);
+	w << 1 << -1 << endr;
+	vec empty;
+	empty.reset();
+
+
+	NeuralNet nn(2, 1, 1, empty, 3, &w);
+	//cout << "initial weights: " << endl;
+	//nn.print_weights();
+	nn.train_GD(inputs, outputs, 10000, 0.1f, true, "GD.txt");
+	nn.set_TRM_parameters(0.25, 0.75, 0.5, 2.0);
+	float ballSize = 0.1f;
+	cout << " " << endl;
+	cout << " " << endl;
+	cout << " " << endl;
+	int steps = 15;
+	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error.txt");
+	//cout << "weights" << endl;
+	//nn.print_weights();
+	//cout << "grad: " << endl;
+	//nn.print_grad();
+
+	mat results = nn.apply(inputs);
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.1f) {
+
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED basic sigmoid test" << endl;
+	}
+}
+
 void runtests() {
 	basic_test();
 	two_layer_test();
@@ -583,8 +724,8 @@ int main()
 
 	
 	//redo_io_files(300);
-	runtests();
-
+	//runtests();
+	basic_test_TRM();
 //	float accuracy = mnist_2layer();
 	cout << "should have printed to files... " << endl;
 	std::cout << "Hello World!" << std::endl;

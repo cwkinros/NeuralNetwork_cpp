@@ -4,36 +4,64 @@
 NeuralNet::NeuralNet() {
 	initialize_params(2, 1, 2);
 	initialize_layers(10);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 NeuralNet::NeuralNet(int n_i, int n_o) {
 	initialize_params(n_i, n_o, 2);
 	initialize_layers(10);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 NeuralNet::NeuralNet(int n_i, int n_o, int n_l) {
 	initialize_params(n_i, n_o, n_l);
 	initialize_layers(10);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns) {
 	initialize_params(n_i, n_o, n_l);
 	initialize_layers(ns);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, int nlin) {
 	initialize_params(n_i, n_o, n_l);
 	initialize_layers(ns, nlin);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, int nlin, mat ws[]) {
 	initialize_params(n_i, n_o, n_l);
 	initialize_layers(ns, ws, nlin);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 
 }
 NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, mat ws[]) {
 	initialize_params(n_i, n_o, n_l);
 	initialize_layers(ns, ws);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 void NeuralNet::initialize_params(int n_i, int n_o, int n_l) {
@@ -42,6 +70,10 @@ void NeuralNet::initialize_params(int n_i, int n_o, int n_l) {
 	n_layers = n_l;
 	Layers = new Layer[n_l];
 	ballSize = 1000;
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
 }
 
 void NeuralNet::initialize_layers(int n) {
@@ -164,6 +196,12 @@ void NeuralNet::initialize_layers(vec ns, mat ws[], int nlin) {
 	}
 }
 
+void NeuralNet::set_TRM_parameters(float lowerbound, float upperbound, float sh, float gr) {
+	lb = lowerbound;
+	ub = upperbound;
+	shrink = sh;
+	grow = gr;
+}
 
 mat NeuralNet::forward_prop(mat input) {
 	Layer* layer = &Layers[0];
@@ -342,8 +380,8 @@ void NeuralNet::print_weights() {
 
 
 void NeuralNet::train_TRM(mat input, mat expected_output, int n_steps, float bs, bool print, string filename) {
-	vec out;
-	vec errors;
+	mat out;
+	mat errors;
 	ballSize = bs;
 	ofstream file;
 	bool log;
@@ -355,23 +393,63 @@ void NeuralNet::train_TRM(mat input, mat expected_output, int n_steps, float bs,
 		file.open(filename, ios::out);
 		log = true;
 	}
-	int next_error;
+	double next_error;
 	out = forward_prop(input);
 	errors = out - expected_output;
 	back_prop(errors);
-	error = float(accu((errors) % (errors)));
+	error = double(accu((errors) % (errors)));
+	float row_k_f, model_s;
+	vec p1(size);
+	vec g(size);
+	vec p_star;
+	float model_s0;
+	double actual_change;
 	for (int i = 0; i < n_steps; i++) {
-		while (true) {
-			step_TRM();
-			out = forward_prop(input);
-			errors = out - expected_output;
-			back_prop(errors);
-			next_error = float(accu((errors) % (errors)));
-
+		out = forward_prop(input);
+		errors = out - expected_output;
+		back_prop(errors);
+		//error = float(accu((errors) % (errors)));
+		get_p1_TRM(p1, g);
+		vec hv = Hv(p1);
+		model_s = dot(g, p1) + 0.5*dot(p1,hv); // (fx - (fx + gTp + 0.5pHp)) (predicted change)
+		if (model_s >= 0) {
+			//cout << "we've got a problem - not the optimal" << endl;
+			vec p0 = cg(g);
+			if (accu(abs(p0)) < ballSize) {
+				model_s0 = dot(g, p0) + 0.5*dot(p0, Hv(p0));
+				if (model_s0 < model_s) {
+					p_star = p0;
+					model_s = model_s0;
+				}
+				else {
+					p_star = p1;
+				}
+			}
+			else {
+				p_star = p1;
+			}
 		}
+		else {
+			p_star = p1;
+		}
+		add_p(p_star);
+		out = forward_prop(input);
+		errors = out - expected_output;
+		next_error = accu(errors%errors);
+
+		actual_change = next_error - error;
+		row_k_f = actual_change / model_s; // ratio of actual change and predicted change
+		if (row_k_f <= lb || model_s > 0) {
+			ballSize = ballSize*shrink;
+			add_p(-p_star);
+			next_error = error;
+		}
+		else if (row_k_f >= ub) {
+			ballSize = ballSize*grow;
+		}
+		
 		if (print) {
-			error = float(accu(abs(errors)));
-			std::cout << "error: " << error << std::endl;
+			std::cout << "error: " << next_error << std::endl;
 			if (log) {
 				file << error << endl;
 			}
@@ -379,18 +457,56 @@ void NeuralNet::train_TRM(mat input, mat expected_output, int n_steps, float bs,
 
 		error = next_error;
 	}
+
+	
 }
 
-void NeuralNet::step_TRM() {
+void NeuralNet::add_p(vec p_star) {
+	int l = 0;
+	int n;
+	int current = 0;
+	while (l < n_layers) {
+		n = Layers[l].W.n_elem;
+		Layers[l].step_TRM(p_star.subvec(current, current + n - 1));
+		current += n;
+		l++;
+	}
+
+}
+
+vec NeuralNet::cg(vec g) {
+	vec x(g.n_elem);
+	x.fill(0.0f);
+	vec r = -g - Hv(x);
+	vec hv;
+	vec p = r;
+	double rsold = dot(r, r);
+	double alpha, rsnew;
+	for (int i = 0; i < g.n_elem; i++) {
+		hv = Hv(x);
+		alpha = rsold / (dot(p, hv));
+		x = x + alpha * p;
+		r = r - alpha * hv;
+		rsnew = dot(r, r);
+		if (sqrt(rsnew) < 1 ^ -10) {
+			break;
+		}
+		p = r + (rsnew / rsold) * p;
+		rsold = rsnew;
+	}
+
+	return x;
+
+
+}
+
+
+void NeuralNet::get_p1_TRM(vec &p_star, vec &g) {
 	// it's all about getting info into little vectors and stuff.... oh goodness
 	// vecs can keep expanding i think - look it up
 
-	int size = 0;
-	for (int i = 0; i < n_layers; i++) {
-		size += Layers[i].W.n_elem;
-	}
 
-	vec g(size);
+
 	vec eigvec(2*size);
 
 	int count = 0;
@@ -405,33 +521,47 @@ void NeuralNet::step_TRM() {
 	float eigvalue = power_series(eigvec, g);
 	vec Y1 = eigvec.subvec(0, size - 1);
 	vec Y2 = eigvec.subvec(size, size * 2 - 1);
-	int sign = 1;
-	if (dot(g,Y2) < 0) {
-		sign = -1;
-	}
-	vec p_star = -sign*ballSize*Y1 / accu(abs(Y1));
-	
-	l = 0;
-	int n;
-	int current = 0;
-	while (l < n_layers) {
-		n = Layers[l].W.n_elem;
-		Layers[l].step_TRM(p_star.subvec(current, current + n - 1));
-		current += n;
-	}
 
+	//vec zero = M_squiggle_v(eigvec, g, eigvalue);
+
+	p_star = ballSize*ballSize*Y1 / (dot(g,Y2));
+	
 }
 
 float NeuralNet::power_series(vec &eigvec, vec g) {
 	vec w(eigvec.n_elem);
 	float eigvalue;
 	w = Mv(eigvec, g);
-	for (int k = 0; k < eigvec.n_elem; k++) {
+	vec r;
+	float amount = INFINITY;
+	int i = 0;
+	while (i < eigvec.n_elem * 1000 && amount > accu(abs(g))*0.1) {
 		eigvec = w / accu(abs(w));
 		w = Mv(eigvec, g);
+		r = w - eigvec;
+		amount = dot(r, r);
 		eigvalue = dot(eigvec,w);
+		i++;
 	}
-	return eigvalue;
+	//if (amount > 1) {
+	//	cout << "DIDN'T CONVERGE" << endl;
+	//}
+
+	vec prod = Mv(eigvec, g);
+	vec prod2 = eigvec*eigvalue;
+	//cout << "eigval: " << eigvalue << endl;
+	return -eigvalue;
+}
+
+vec NeuralNet::M_squiggle_v(vec v, vec g, float lambda) {
+	vec y1(v.n_elem / 2);
+	vec y2(v.n_elem / 2);
+	y1 = v.subvec(0, (v.n_elem / 2) - 1);
+	y2 = v.subvec(v.n_elem / 2, v.n_elem - 1);
+	vec hv(v.n_elem);
+	hv.subvec(0, (v.n_elem / 2) - 1) = -y1 + Hv(y2) + lambda*y2;            
+	hv.subvec((v.n_elem / 2), v.n_elem - 1) = Hv(y1) + lambda*y1 -g*(g.t()*y2) / ballSize;
+	return hv;
 }
 
 vec NeuralNet::Mv(vec v, vec g) {
@@ -440,8 +570,8 @@ vec NeuralNet::Mv(vec v, vec g) {
 	y1 = v.subvec(0,(v.n_elem / 2)-1);
 	y2 = v.subvec(v.n_elem / 2, v.n_elem - 1);
 	vec hv(v.n_elem);
-	hv.subvec(0, (v.n_elem / 2) - 1) = -Hv(y1) + g*(g.t()*y2)/ballSize;
-	hv.subvec((v.n_elem / 2), v.n_elem - 1) = y1 - Hv(y2);
+	hv.subvec(0, (v.n_elem / 2) - 1) = Hv(y1) - g*(g.t()*y2)/ballSize;
+	hv.subvec((v.n_elem / 2), v.n_elem - 1) = -y1 + Hv(y2);
 	return hv;
 }
 
