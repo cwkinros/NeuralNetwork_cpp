@@ -46,16 +46,30 @@ mat Layer::back_prop(mat this_dz) {
 	vec dh;
 	mat grad;
 	mat next_dz(W.n_cols, this_dz.n_cols);
-	for (unsigned int i = 0; i < this_dz.n_cols; i++) {
-		g1_hs.col(i) = g1(hs.col(i), i, this_dz.col(i));	
-		dh = this_dz.col(i)%g1_hs.col(i);
-		next_dz.col(i) = W.t()*dh;
-		GradW += dh*Inputs.col(i).t();
+	if (non_lin == 4) {
+		double a = dot(zl, this_dz);
+		for (unsigned int i = 0; i < this_dz.n_cols; i++) {
+			g1_hs.col(i) = this_dz%zl - a*zl; // in this case g1_hs is dh
+			next_dz.col(i) = W.t()*g1_hs.col(i);
+			GradW += g1_hs.col(i)*Inputs.col(i).t();
+		}
+		g2_hs = g2(hs); // not good (more work to be done)
+		dz = this_dz * 0 + 1;
 	}
-	g2_hs = g2(hs);
+	else {
+		for (unsigned int i = 0; i < this_dz.n_cols; i++) {
+			g1_hs.col(i) = g1(hs.col(i), i, this_dz.col(i));
+			dh = this_dz.col(i) % g1_hs.col(i);
+			next_dz.col(i) = W.t()*dh;
+			GradW += dh*Inputs.col(i).t();
+		}
+		g2_hs = g2(hs);
+		dz = this_dz;
+	}
+	
 	// update GradW
 	GradW = GradW*(1.0f / float(this_dz.n_cols));
-	dz = this_dz;
+	
 	//GradW.print("gradW: ");
 	return next_dz;
 }
@@ -75,6 +89,7 @@ vec Layer::g(vec input) {
 	case (4) :
 		input = exp(input);
 		input = input / sum(input);
+		break;
 	default:
 		break;
 	}
@@ -93,8 +108,8 @@ vec Layer::g1(vec input, int i, vec dz) {
 		input.fill(2.0f);
 		break;
 	case (3) :
-		input = g(input) % (ones - g(input));
-		//input = zl.col(i)%(ones-zl.col(i));
+		//input = zl.col(i) % (zl.col(i) - ones); wrong
+		input = zl.col(i)%(ones-zl.col(i));
 		break;
 	case (4) :
 		input = zl.col(i)%(dz - sum(dz%zl.col(i)));
@@ -116,7 +131,7 @@ mat Layer::g2(mat input) {
 		input.fill(0.0f);
 		break;
 	case (3) :
-		input = g1_hs % (ones - 2.0f*zl);
+		input = g1_hs % (1.0f - 2.0f*zl);
 		break;
 	case (4) :
 		// need to fix more than just this
@@ -129,15 +144,22 @@ mat Layer::g2(mat input) {
 }
 
 mat Layer::g(mat input) {
+	vec v;
 	switch (non_lin) {
 	case (1) :
-		input = input * input;
+		input = input%input;
 		break;
 	case (2) :
 		input = input * 2.0f;
 		break;
 	case (3) :
 		input = 1.0f / (1.0f + exp(-input));
+		break;
+	case (4) :
+		for (int i = 0; i < input.n_cols; i++) {
+			v = input.col(i);
+			input.col(i) = g(v);
+		}
 		break;
 	default:
 		break;
@@ -153,26 +175,17 @@ mat Layer::output(mat input) {
 }
 
 mat Layer::forwardHv(mat _R_input, mat V) {
-
-	mat _R_h(n,_R_input.n_cols);
-	_R_h.fill(0.0f);
-	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < _R_input.n_rows; j++) {
-			_R_h.row(i) = _R_h.row(i) + W(i, j)*_R_input.row(i) + V(i, j)*Inputs.row(j);
-		}
-	}
 	R_input = _R_input;
-	mat R_z = g1_hs%_R_h;
-	R_hs = _R_h;
-	return R_z;
+	R_hs = W*_R_input + V*Inputs;
+	return g1_hs%R_hs;
+
 }
 
 mat Layer::backHv(mat R_dz, mat V) {
-	mat R_dh(n, R_dz.n_cols);
-	R_dh = R_dz%g1_hs + dz%g2_hs%R_hs;
-	R_dw = R_dh*Inputs.t() + (dz%g1_hs)*R_input.t();
-	mat R_dz_1(Inputs.n_rows, n);
-	R_dz_1 = W.t()*R_dh + V.t()*(dz%g1_hs);
+	mat R_dh = R_dz%g1_hs + dz%g2_hs%R_hs;
+	mat dzg1hs = dz%g1_hs; // we're going to save dzg1hs in g1_hs and dzg2hs in g2_hs for the case of softmax -> migh tas well! 
+	R_dw = R_dh*Inputs.t() + dzg1hs*R_input.t();
+	mat R_dz_1 = W.t()*R_dh + V.t()*dzg1hs;
 	return R_dz_1;
 }
 

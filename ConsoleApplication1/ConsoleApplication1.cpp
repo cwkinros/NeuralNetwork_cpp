@@ -9,6 +9,7 @@
 #include <armadillo>
 #include "NeuralNet.h"
 #include <fstream>
+#include <time.h>
 
 using namespace std;
 using namespace arma;
@@ -275,6 +276,206 @@ float mnist_2layer_SGD() {
 
 }
 
+float small_mnist_1layer_GD() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	mat inputs = arr.submat(390, 0, 415, arr.n_cols - 1);
+
+	vec empty;
+	empty.reset();
+
+	NeuralNet nn(26, 10, 1, empty, 3);
+	int steps = 5000;
+	cout << "training begins:" << endl;
+	nn.train_GD(inputs, labels, steps, 0.1f, true, "small_mnist_1layer_GD.txt");
+
+	float accuracy = nn.accuracy_test(inputs, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
+}
+
+float overnight_experiment2() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	mat inputs = arr.submat(400, 0, 409, arr.n_cols - 1);
+
+	vec one_hidden(1);
+	one_hidden<<5;
+	int steps;
+	NeuralNet nn(10, 10, 2, one_hidden, 3);
+	int max_time = 1000 * 60 ; // 5 hours
+	steps = 10000;
+	//cout << "training begins:" << endl;
+	//vec weights = nn.get_weights();
+//	nn.train_GD(inputs, labels, steps, 0.1f, true, "small_mnist_1layer_GD_time_test2_2.txt", true, max_time);
+	nn.set_TRM_parameters(0.1, 0.7, 0.1, 2.0);
+	float ballSize = 0.01f;
+	max_time = max_time * 20;
+	//nn.set_weights(weights);
+	cout << "training begins:" << endl;
+	nn.train_TRM(inputs, labels, steps, ballSize, true, "small_mnist_1layer_TRM_time_test2_2.txt", 0.0f, true, max_time);
+
+
+
+
+	float accuracy = nn.accuracy_test(inputs, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
+}
+
+
+
+float overnight_experiment() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	mat inputs = arr.submat(400, 0, 409, arr.n_cols - 1);
+
+	vec empty;
+	empty.reset();
+	int steps;
+	NeuralNet nn(10, 10, 1, empty, 3);
+	int max_time = 1000 * 60 * 60 * 7; // 3 hours
+	steps = 10000;
+	cout << "training begins:" << endl;
+	vec weights = nn.get_weights();
+	nn.train_GD(inputs, labels, steps, 0.1f, true, "small_mnist_1layer_GD_time_test3.txt", true, max_time);
+	nn.set_TRM_parameters(0.3, 0.7, 0.5, 2.0);
+	float ballSize = 100.0f;
+	nn.set_weights(weights);
+	cout << "training begins:" << endl;
+	nn.train_TRM(inputs, labels, steps, ballSize, true, "small_mnist_1layer_TRM_time_test3.txt",0.0f, true, max_time);
+
+
+
+
+	float accuracy = nn.accuracy_test(inputs, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
+}
+
+float small_mnist_1layer_TRM() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	mat inputs = arr.submat(400, 0, 409, arr.n_cols - 1);
+
+	vec empty;
+	empty.reset();
+	int steps;
+	NeuralNet nn(10, 10, 1, empty, 3);
+
+	steps = 10000;
+	cout << "training begins:" << endl;
+	nn.train_GD(inputs, labels, steps, 0.1f, true, "small_mnist_1layer_GD_215_1.txt");
+	
+	//vec weights = nn.get_weights();
+	nn.set_TRM_parameters(0.3, 0.7, 0.5, 2.0);
+
+
+	float ballSize = 100.0f;
+	
+	steps = 50000;
+	//cout << "training begins again:" << endl;
+	//nn.train_GD(inputs, labels, steps, 0.1f, true, "small_mnist_1layer_GD_215_2.txt");
+
+	//float error = nn.test(inputs, labels);
+	
+
+	//nn.set_weights(weights);
+	cout << "training begins:" << endl;
+	nn.train_TRM(inputs, labels, steps, ballSize, true, "small_mnist_1layer_TRM_215_1.txt");
+
+
+
+
+	float accuracy = nn.accuracy_test(inputs, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
+}
+
+float simplest_mnist_1layer() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	vec empty;
+	empty.reset();
+
+	NeuralNet nn(784, 10, 1,empty, 3);
+	nn.set_TRM_parameters(0.1, 0.8, 0.7, 1.5);
+	float ballSize = 0.01f;
+	int steps = 100;
+	cout << "training begins:" << endl;
+	nn.train_TRM(arr, labels, steps, ballSize, true, "simples_mnist_TRM.txt");
+
+	float accuracy = nn.accuracy_test(arr, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+}
+
+float mnist_2layer_TRM() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr - 0.5f;
+
+	vec ns(2);
+	ns << 100 << 50 << endr;
+
+
+	NeuralNet nn(784, 10, 2, ns, 4);
+	nn.set_TRM_parameters(0.1, 0.8, 0.7, 1.5);
+	float ballSize = 0.001f;
+	int steps = 100;
+	cout << "training begins:" << endl;
+	nn.train_TRM(arr, labels, steps, ballSize, true, "mnist_2layer.txt");
+
+	float accuracy = nn.accuracy_test(arr, labelvec);
+	cout << "accuracy of simple test on training set: " << accuracy << endl;
+
+	return accuracy;
+
+}
+
 float mnist_2layer() {
 	mat arr, labels;
 	vec labelvec;
@@ -331,7 +532,7 @@ void redo_txt(int num_examples, string filename_input, string filename_output) {
 	save_file(filename_input, filename_output, arr, labelvec, num_examples);
 }
 
-void basic_test() {
+void basic_test_GD() {
 	mat inputs(2,10);
 	mat outputs(1,10);
 
@@ -351,10 +552,8 @@ void basic_test() {
 	vec empty;
 	empty.reset();
 
-	
-
-	NeuralNet nn(2, 1, 1, empty);
-	nn.train_GD_Alr(inputs, outputs,100,1.0f,1.1f, 0.5f, false, "");
+	NeuralNet nn(2, 1, 1, empty, 1);
+	nn.train_GD(inputs, outputs,200000,0.00001f,true, "GD_error.txt");
 	//cout << "should have weights 1 1" << endl;
 	mat results = nn.apply(inputs);
 	bool passed = true;
@@ -384,10 +583,10 @@ void two_layer_test_TRM() {
 	hidden << 2 << endr;
 
 
-
-	NeuralNet nn(2, 1, 2, hidden);
-	nn.set_TRM_parameters(0.1, 0.8, 0.7, 1.5);
-	float ballSize = 0.001f;
+	// 3 for sigmoid
+	NeuralNet nn(2, 1, 2, hidden,1);
+	nn.set_TRM_parameters(0.1, 0.8, 0.1, 5);
+	float ballSize = 0.1f;
 	int steps = 1000;
 	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error.txt");
 	nn.print_weights();
@@ -607,6 +806,91 @@ void basic_test_hv() {
 	}
 }
 
+void basic_test_GD2() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
+
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	//mat w(1, 2);
+	//w << 0.5 << 1.5 << endr;
+	vec empty;
+	empty.reset();
+
+
+
+	NeuralNet nn(2, 1, 2);
+	nn.set_TRM_parameters(0.25, 0.75, 0.9, 1.1);
+	float ballSize = 0.1f;
+	int steps = 1000;
+	nn.train_GD(inputs, outputs, steps, 0.01f, true, "GD_error2.txt");
+	nn.print_weights();
+	//cout << "should have weights 1 1" << endl;
+	mat results = nn.apply(inputs);
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.000001f) {
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED basic test" << endl;
+	}
+}
+
+void basic_test_TRM2() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
+
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	//mat w(1, 2);
+	//w << 0.5 << 1.5 << endr;
+	vec empty;
+	empty.reset();
+
+
+
+	NeuralNet nn(2, 1, 2);
+	nn.set_TRM_parameters(0.25, 0.75, 0.9, 1.1);
+	float ballSize = 0.1f;
+	int steps = 1000;
+	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error2.txt");
+	nn.print_weights();
+	//cout << "should have weights 1 1" << endl;
+	mat results = nn.apply(inputs);
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.000001f) {
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED basic test" << endl;
+	}
+
+}
+
 void basic_test_TRM() {
 	mat inputs(2, 10);
 	mat outputs(1, 10);
@@ -629,10 +913,13 @@ void basic_test_TRM() {
 
 
 
-	NeuralNet nn(2, 1, 1, empty);
-	nn.set_TRM_parameters(0.25, 0.75, 0.9, 1.1);
+	NeuralNet nn(2, 1, 1, empty,1);
+	int steps = 100000;
+	nn.train_GD(inputs, outputs, steps, 0.00000001f, true, "");
+
+	//nn.set_TRM_parameters(0.25, 0.75, 0.5, 1.5);
 	float ballSize = 0.1f;
-	int steps = 10000;
+	steps = 100;
 	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error.txt");
 	nn.print_weights();
 	//cout << "should have weights 1 1" << endl;
@@ -649,7 +936,6 @@ void basic_test_TRM() {
 	}
 
 }
-
 
 void basic_sigmoid_test_TRM() {
 	mat inputs(2, 10);
@@ -710,8 +996,53 @@ void basic_sigmoid_test_TRM() {
 	}
 }
 
+void test_cg_TRM() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+
+	for (int i = 0; i < outputs.n_elem; i++) {
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	vec empty;
+	empty.reset();
+	NeuralNet nn(2, 1, 2, 1);
+	nn.set_TRM_parameters(0.25, 0.75, 0.5, 1.5);
+	float ballSize = 0.1f;
+	int steps = 2000;
+	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error.txt");
+	vec p1(12), g(12);
+	nn.get_p1_TRM(p1, g);
+	vec p0 = nn.cg(g);
+
+}
+
+void get_p1_test_TRM() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+
+	for (int i = 0; i < outputs.n_elem; i++) {
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	vec empty;
+	empty.reset();
+	NeuralNet nn(2, 1, 2, 4);
+	nn.set_TRM_parameters(0.25, 0.75, 0.5, 1.5);
+	nn.forwback(inputs, outputs);
+	vec p1(30), g(30);
+	nn.get_p1_TRM(p1, g);
+
+}
+
 void runtests() {
-	basic_test();
+	basic_test_GD();
 	two_layer_test();
 	two_layer_test_large_hidden();
 	seven_layer_test_medium_hidden();
@@ -719,14 +1050,64 @@ void runtests() {
 	basic_test_hv();
 }
 
+void timing_test() {
+	mat arr, labels;
+	vec labelvec;
+	from_files("input.txt", "output.txt", arr, labelvec);
+	labelvec2mat(labels, labelvec);
+
+	arr = arr / (255.0f);
+	arr = arr;
+
+	vec empty;
+	empty.reset();
+
+	int n_weights = 7840;
+	vec v(n_weights);
+	v.randu();
+
+	NeuralNet nn(784, 10, 1, empty, 4);
+	nn.set_TRM_parameters(0.1, 0.8, 0.7, 1.5);
+	nn.forwback(arr, labels);
+	
+	float sum = 0;
+	int total = 100;
+	clock_t t;
+	t = clock();
+	
+
+	for (int i = 0; i < total; i++) {
+		t = clock();
+		v = nn.Hv(v);
+		sum = sum + (clock() - t);
+	}
+
+	cout << "average time = " << sum / float(total) << " ms" << endl;
+}
+
 int main()
 {
 
-	
+
+	//overnight_experiment2();
+	//small_mnist_1layer_TRM();
+	//test_cg_TRM();
+	//basic_test_TRM();
 	//redo_io_files(300);
 	//runtests();
 	basic_test_TRM();
+	//simplest_mnist_1layer();
 //	float accuracy = mnist_2layer();
+	//simplest_mnist_1layer();
+	//clock_t t;
+	//t = clock();
+	//system("pause");
+	//basic_test_TRM();
+	//basic_test_GD();
+	//basic_test_GD2();
+	//t = clock() - t;
+	//two_layer_test_TRM();
+	//two_layer_test();
 	cout << "should have printed to files... " << endl;
 	std::cout << "Hello World!" << std::endl;
 	system("pause");
