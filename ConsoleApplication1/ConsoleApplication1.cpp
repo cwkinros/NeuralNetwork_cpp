@@ -676,6 +676,46 @@ void two_layer_test_large_hidden() {
 
 }
 
+void seven_layer_test_medium_hidden_TRM_cd() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	vec hidden(6);
+	hidden << 4 << 6 << 2 << 5 << 2 << 7 << endr;
+
+	vec nlin(6);
+	nlin << 3 << 3 << 3 << 3 << 3 << 3 << endr;
+
+	NeuralNet nn(2, 1, 7, hidden, nlin);
+	nn.set_TRM_parameters(0.2, 0.8, 0.5, 2.0);
+	vec weights = nn.get_weights();
+	int steps = 1000;
+	nn.train_TRM_cd(inputs, outputs, steps, 1.0f, true, "7layerTRMcd.txt", 0.0f, true);
+	nn.set_weights(weights);
+	nn.train_GD(inputs, outputs, steps*10, 0.0001, true, "7layerGD.txt", true, 100000000000000);
+	mat results = nn.apply(inputs);
+	//results.print("results: ");
+	//outputs.print("expected results: ");
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.1f) {
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED seven_layer_test_medium_hidden" << endl;
+	}
+
+}
+
 void seven_layer_test_medium_hidden() {
 	mat inputs(2, 10);
 	mat outputs(1, 10);
@@ -690,9 +730,12 @@ void seven_layer_test_medium_hidden() {
 	vec hidden(6);
 	hidden << 50 << 50 << 50 << 50 << 50 << 50 << endr;
 
+	vec nlin(6);
 
-	NeuralNet nn(2, 1, 7, hidden);
-	nn.train_GD(inputs, outputs, 1000, 1.0f, false, "");
+	nlin << 3 << 3 << 3 << 3 << 3 << 3 << endr;
+
+	NeuralNet nn(2, 1, 7, hidden, nlin);
+	nn.train_GD(inputs, outputs, 100000, 0.00001f, true, "7layerGD.txt");
 
 	mat results = nn.apply(inputs);
 	//results.print("results: ");
@@ -848,6 +891,50 @@ void basic_test_GD2() {
 	}
 }
 
+void basic_test_TRM_cd() {
+	mat inputs(2, 10);
+	mat outputs(1, 10);
+
+	inputs << 1 << 5 << 4 << 7 << 8 << 9 << 1 << 2 << 1 << 9 << endr
+		<< 3 << 2 << 6 << 1 << 5 << 3 << 23 << 2 << 6 << 1 << endr;
+	//inputs << 1 << 5 << endr
+	//	<< 3 << 2 << endr;
+
+
+	for (int i = 0; i < outputs.n_elem; i++) {
+		// ie weights should be 1 and 1
+		outputs(0, i) = inputs(0, i) + inputs(1, i);
+	}
+
+	//mat w(1, 2);
+	//w << 0.5 << 1.5 << endr;
+	vec empty;
+	empty.reset();
+
+
+
+	NeuralNet nn(2, 1, 2);
+	nn.set_TRM_parameters(0.25, 0.75, 0.5, 2.0);
+	float ballSize = 0.1f;
+	int steps = 1000;
+	nn.train_TRM_cd(inputs, outputs, steps, ballSize, true, "TRM_cd_error.txt");
+	cout << "finished cd" << endl;
+	nn.print_weights();
+	//cout << "should have weights 1 1" << endl;
+	mat results = nn.apply(inputs);
+	bool passed = true;
+	for (int i = 0; i < 10; i++) {
+		if (abs(results(0, i) - outputs(0, i)) > 0.000001f) {
+			passed = false;
+			cerr << "error with system!!!!!!" << endl;
+		}
+	}
+	if (passed) {
+		cout << "PASSED basic test" << endl;
+	}
+
+}
+
 void basic_test_TRM2() {
 	mat inputs(2, 10);
 	mat outputs(1, 10);
@@ -873,7 +960,7 @@ void basic_test_TRM2() {
 	NeuralNet nn(2, 1, 2);
 	nn.set_TRM_parameters(0.25, 0.75, 0.9, 1.1);
 	float ballSize = 0.1f;
-	int steps = 1000;
+	int steps = 100000;
 	nn.train_TRM(inputs, outputs, steps, ballSize, true, "TRM_error2.txt");
 	nn.print_weights();
 	//cout << "should have weights 1 1" << endl;
@@ -1092,10 +1179,10 @@ int main()
 	//overnight_experiment2();
 	//small_mnist_1layer_TRM();
 	//test_cg_TRM();
-	//basic_test_TRM();
+	//basic_test_TRM_cd();
 	//redo_io_files(300);
 	//runtests();
-	basic_test_TRM();
+	seven_layer_test_medium_hidden_TRM_cd();
 	//simplest_mnist_1layer();
 //	float accuracy = mnist_2layer();
 	//simplest_mnist_1layer();

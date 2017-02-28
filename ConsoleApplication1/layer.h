@@ -64,12 +64,13 @@ public:
 	mat backHv(mat R_dz, mat V);
 	void set_next(Layer* l);
 	void set_previous(Layer* l);
-
+	double singleHv(int i, int j);
 	Layer* get_next();
 	Layer* get_previous();
 	mat R_dw; // this is Hv for this layer
 	mat W;
 	mat GradW;
+	mat BallSizes;
 private:
 	int n;
 	int non_lin;
@@ -82,6 +83,8 @@ private:
 	mat R_hs;
 	mat R_input;
 	mat R_dz;
+	mat R_dh;
+	mat dzg1hs;
 	Layer* Next;
 	Layer* Previous;
 };

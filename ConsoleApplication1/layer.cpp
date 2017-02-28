@@ -14,6 +14,7 @@ Layer::Layer(int num, int type, int input_size) {
 	W = W - 0.5f;
 	W = W * 2.0f / float(sqrt(input_size));
 	GradW = mat(num, input_size);
+	BallSizes = mat(num, input_size);
 	Next = NULL;
 	Previous = NULL;
 }
@@ -24,6 +25,7 @@ Layer::Layer(int num, int type, int input_size, mat w) {
 	non_lin = type;
 	W = w;
 	GradW = mat(num, input_size);
+	BallSizes = mat(num, input_size);
 	Next = NULL;
 	Previous = NULL;
 }
@@ -182,13 +184,12 @@ mat Layer::forwardHv(mat _R_input, mat V) {
 }
 
 mat Layer::backHv(mat R_dz, mat V) {
-	mat R_dh = R_dz%g1_hs + dz%g2_hs%R_hs;
-	mat dzg1hs = dz%g1_hs; // we're going to save dzg1hs in g1_hs and dzg2hs in g2_hs for the case of softmax -> migh tas well! 
+	R_dh = R_dz%g1_hs + dz%g2_hs%R_hs;
+	dzg1hs = dz%g1_hs; // we're going to save dzg1hs in g1_hs and dzg2hs in g2_hs for the case of softmax -> migh tas well! 
 	R_dw = R_dh*Inputs.t() + dzg1hs*R_input.t();
 	mat R_dz_1 = W.t()*R_dh + V.t()*dzg1hs;
 	return R_dz_1;
 }
-
 
 void Layer::set_next(Layer* l) {
 	Next = l;

@@ -73,6 +73,16 @@ NeuralNet::NeuralNet(int n_i, int n_o, int n_l, int nlin) {
 	}
 }
 
+NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, vec nlin) {
+	initialize_params(n_i, n_o, n_l);
+	initialize_layers(ns, nlin);
+	size = 0;
+	for (int i = 0; i < n_layers; i++) {
+		size += Layers[i].W.n_elem;
+	}
+}
+
+
 void NeuralNet::initialize_params(int n_i, int n_o, int n_l) {
 	input_size = n_i;
 	output_size = n_o;
@@ -128,6 +138,30 @@ void NeuralNet::initialize_layers(int n, int nlin) {
 			last = &Layers[i];
 		}
 		Layers[n_layers - 1] = Layer(output_size, nlin, n);
+		last->set_next(&Layers[n_layers - 1]);
+		Layers[n_layers - 1].set_previous(last);
+	}
+}
+
+void NeuralNet::initialize_layers(vec ns, vec nlin) {
+	if (n_layers == 1) {
+		Layers[0] = Layer(output_size, 0, input_size);
+	}
+	else {
+		Layers[0] = Layer(ns[0], int(nlin[0]), input_size);
+		Layer* last = &Layers[0];
+		Layer* next;
+		Layer* previous;
+		Layer new_node;
+		for (int i = 1; i < n_layers - 1; i++) {
+			Layers[i] = Layer(ns[i], int(nlin[i]), ns[i-1]);
+			next = &Layers[i];
+			last->set_next(next);
+			previous = last;
+			Layers[i].set_previous(previous);
+			last = &Layers[i];
+		}
+		Layers[n_layers - 1] = Layer(output_size, int(nlin[n_layers-1]), ns[n_layers-2]);
 		last->set_next(&Layers[n_layers - 1]);
 		Layers[n_layers - 1].set_previous(last);
 	}
@@ -290,7 +324,8 @@ void NeuralNet::train_GD(mat input, mat expected_output, int n_steps, float lr, 
 	float last_error = INFINITY;
 	if (times) {
 		clock_t initial_time = clock();
-		while(clock() - initial_time < max_time){
+		int steps = 0;
+		while(steps <= n_steps && clock() - initial_time < max_time){
 			out = forward_prop(input);
 			errors = out - expected_output;
 
@@ -306,7 +341,7 @@ void NeuralNet::train_GD(mat input, mat expected_output, int n_steps, float lr, 
 					file_time << (clock() - initial_time) << endl;
 				}
 			}
-
+			steps++;
 
 		}
 	}
@@ -443,13 +478,19 @@ void NeuralNet::print_weights() {
 }
 
 void NeuralNet::train_TRM_cd(mat input, mat expected_output, int n_steps, float bs, bool print, string filename, float cutoff, bool times, int max_time) {
-	mat out;
-	mat errors;
-	float max_ball_size = 10 ^ 10;
+	// maybe we should actually compute the Hessian matrix
+	int i = 0;
+	int random_idx;
+	vec V(size);
+	vec g(size);
+	V.fill(0.0f);
 	ballSize = bs;
-	ofstream file, file_times;
+
+	for (int l = 0; l < n_layers; l++){
+		Layers[l].BallSizes.fill(ballSize*(10^(n_layers - l)));
+	}
 	bool log;
-	float n1 = 0.10, n2 = 0.25, n3 = 0.25;
+	ofstream file, file_times;
 	if (filename == "") {
 		log = false;
 	}
@@ -460,139 +501,139 @@ void NeuralNet::train_TRM_cd(mat input, mat expected_output, int n_steps, float 
 			file_times.open("time_" + filename, ios::out);
 		}
 	}
-	double next_error;
-	//cout << "forward prop" << endl;
-	out = forward_prop(input);
-	errors = out - expected_output;
-	//cout << "back prop" << endl;
-	back_prop(errors);
-	error = dot(errors, errors);
-	float row_k_f, model_s;
-	vec p1(size);
-	vec g(size);
-	vec p_star;
-	float model_s0;
-	double actual_change;
-	int i = 0;
-	vec p0;
-	if (times) {
-		clock_t initial_time = clock();
-		while (clock() - initial_time < max_time) {
-			//cout << "forward prop" << endl;
-			out = forward_prop(input);
-			errors = out - expected_output;
-			//cout << "back prop" << endl;
-			back_prop(errors);
-			//error = float(accu((errors) % (errors)));
-			//cout << "get p1";
-			get_p1_TRM(p1, g);
-			//cout << "done " << endl;
-			vec hv = Hv(p1);
-			model_s = dot(g, p1) + 0.5*dot(p1, hv); // (fx - (fx + gTp + 0.5pHp)) (predicted change)
-			p_star = p1;
-			// I will reinstate the below section once I've replaced cg with a solver that works on indefinite matrices - actually don't need it p0 is only a local min if it's positive semidefinite
-			p0 = cg(g);
-			if (accu(abs(p0)) < ballSize) {
-				model_s0 = dot(g, p0) + 0.5*dot(p0, Hv(p0));
-				if (model_s0 < model_s) {
-					p_star = p0;
-					model_s = model_s0;
+
+	double max_ballSize = 10 ^ 20;
+	double d1;
+	double d2;
+	vec hessian_col;
+	mat errors;
+	int layer, l_idx;
+	double approximate_delta, actual_delta, row;
+	bool no_step;
+	double starting_ballSize;
+	double p0, p1, p_star, lambda_star, y1, y2, error1, error0, next_error;
+	random_idx = 0;
+
+	clock_t initial_time = clock();
+	while (i < n_steps) { // get better stopping condition
+		errors = forward_prop(input) - expected_output;
+		error = dot(errors, errors);
+		back_prop(errors);
+		d2 = 0;
+		d1 = 0;
+		l_idx = -1;
+		layer = -1;
+		while (abs(d2*d1) < 0.0000000000001) {
+			random_idx = size - 1 - (random_idx + 1) % size;// rand() % size;
+			int count = 0;
+			int l = 0;
+			while (l < n_layers) {
+				for (int j = 0; j < Layers[l].W.n_elem; j++) {
+					g(count) = Layers[l].GradW(j);
+					//mmm i should make a mapping 
+					if (count == random_idx) {
+						layer = l;
+						l_idx = j;
+					}
+					count++;
+				}
+				l++;
+			}
+			d1 = g(random_idx);
+			V.at(random_idx) = 1;
+			hessian_col = Hv(V);
+			d2 = hessian_col.at(random_idx);
+		}
+
+		bool computed_p0 = false;
+		no_step = true;
+		int c = 0;
+		starting_ballSize = ballSize;
+		while (no_step && c < 10) {
+			if (d2 > 0) {
+				// only calculate p0 if it's a min not a max
+				p0 = -d1 / d2;
+				if (p0 < ballSize) {
+					computed_p0 = true;
 				}
 			}
-			add_p(p_star);
-			out = forward_prop(input);
-			errors = out - expected_output;
-			next_error = dot(errors, errors);
-			if (isnan(next_error)) {
-				cout << "error is nan! " << endl;
-				i = n_steps;
+
+		
+			//p1 = ballSize*(d1 / abs(d1))*(d2 / abs(d2));
+			p1 = -ballSize*(d1 / abs(d1));
+		
+
+			//cout << "p1:" << p1 << "ballsize:" << ballSize << endl;
+
+			if (computed_p0) {
+				Layers[layer].W(l_idx) += p1;
+				errors = forward_prop(input) - expected_output;
+				error1 = dot(errors, errors);
+				Layers[layer].W(l_idx) += (p0 - p1);
+				errors = forward_prop(input) - expected_output;
+				error0 = dot(errors, errors);
+
+				if (error0 <= error1) {
+					p_star = p0;
+					next_error = error0;
+				}
+				else {
+					Layers[layer].W(l_idx) += (p1 - p0);
+					p_star = p1;
+					next_error = error1;
+				}
 			}
-			actual_change = next_error - error;
-			row_k_f = actual_change / model_s; // ratio of actual change and predicted change
-			if (row_k_f <= lb || model_s > 0) {
-				ballSize = ballSize*shrink;
-				add_p(-p_star);
+			else {
+				Layers[layer].W(l_idx) += p1;
+				errors = forward_prop(input) - expected_output;
+				next_error = dot(errors, errors);
+				p_star = p1;
+
+			}
+
+			approximate_delta = p_star*d1 + (1.0 / 2.0)*p_star*p_star*d2;
+			actual_delta = next_error - error;
+
+			row = actual_delta / approximate_delta;
+			if (row > ub && Layers[layer].BallSizes(l_idx)*grow < max_ballSize) {
+				Layers[layer].BallSizes(l_idx) *= grow;
+				//cout << "grew ";
+				no_step = false;
+			}
+			else if (row < lb) {
+				Layers[layer].W(l_idx) -= p_star;
+				Layers[layer].BallSizes(l_idx) *= shrink;
 				next_error = error;
 			}
-			else if (row_k_f >= ub && ballSize*grow < max_ball_size) {
-				ballSize = ballSize*grow;
+			else {
+				no_step = false;
 			}
+			c++;
 
-			if (print) {
-				std::cout << "error: " << next_error << std::endl;
-				if (log) {
-					file << next_error << endl;
-				}
-				//std::cout << "time: " << (clock() - initial_time);
-				if (times) {
-					file_times << (clock() - initial_time) << endl;
-				}
+		}
+		//if (c >= 10) {
+		//	ballSize = starting_ballSize;
+		//}
+		if (isnan(next_error)) {
+			cout << "we've got a problem" << endl;
+		}
+		
+		if (next_error > error) {
+			cout << "error increased" << endl;
+		}
+		i++;
+
+		if (print) {
+			std::cout << "error: " << next_error << " i: " << i << std::endl;
+			if (log) {
+				file << next_error << endl;
 			}
-
-			error = next_error;
-			i += 1;
+			//std::cout << "time: " << (clock() - initial_time);
+			if (times) {
+				file_times << (clock() - initial_time) << endl;
+			}
 		}
 	}
-	else {
-
-
-		while (i < n_steps && error > cutoff) {
-			//cout << "forward prop" << endl;
-			out = forward_prop(input);
-			errors = out - expected_output;
-			//cout << "back prop" << endl;
-			back_prop(errors);
-			//error = float(accu((errors) % (errors)));
-			//cout << "get p1";
-			get_p1_TRM(p1, g);
-			//cout << "done " << endl;
-			vec hv = Hv(p1);
-			model_s = dot(g, p1) + 0.5*dot(p1, hv); // (fx - (fx + gTp + 0.5pHp)) (predicted change)
-			p_star = p1;
-			// I will reinstate the below section once I've replaced cg with a solver that works on indefinite matrices - actually don't need it p0 is only a local min if it's positive semidefinite
-			p0 = cg(g);
-			if (accu(abs(p0)) < ballSize) {
-				model_s0 = dot(g, p0) + 0.5*dot(p0, Hv(p0));
-				if (model_s0 < model_s) {
-					p_star = p0;
-					model_s = model_s0;
-				}
-			}
-			add_p(p_star);
-			out = forward_prop(input);
-			errors = out - expected_output;
-			next_error = dot(errors, errors);
-			if (isnan(next_error)) {
-				cout << "error is nan! " << endl;
-				i = n_steps;
-			}
-			actual_change = next_error - error;
-			row_k_f = actual_change / model_s; // ratio of actual change and predicted change
-			if (row_k_f <= lb || model_s > 0) {
-				ballSize = ballSize*shrink;
-				add_p(-p_star);
-				next_error = error;
-			}
-			else if (row_k_f >= ub && ballSize*grow < max_ball_size) {
-				ballSize = ballSize*grow;
-			}
-
-			if (print) {
-				std::cout << "error: " << next_error << std::endl;
-				if (log) {
-					file << next_error << endl;
-				}
-			}
-
-			error = next_error;
-			i += 1;
-		}
-	}
-	if (filename != "") {
-		cout << "closing " << filename << endl;
-		file.close();
-	}
-
 
 }
 
@@ -962,7 +1003,7 @@ vec NeuralNet::M_squiggle_v(vec v, vec g, float lambda) {
 	y2 = v.subvec(v.n_elem / 2, v.n_elem - 1);
 	vec hv(v.n_elem);
 	hv.subvec(0, (v.n_elem / 2) - 1) = -y1 + Hv(y2) + lambda*y2;            
-	hv.subvec((v.n_elem / 2), v.n_elem - 1) = Hv(y1) + lambda*y1 -g*(g.t()*y2) / ballSize;
+	hv.subvec((v.n_elem / 2), v.n_elem - 1) = Hv(y1) + lambda*y1 -g*(g.t()*y2) / (ballSize*ballSize);
 	return hv;
 }
 
@@ -972,7 +1013,7 @@ vec NeuralNet::Mv(vec v, vec g) {
 	y1 = v.subvec(0,(v.n_elem / 2)-1);
 	y2 = v.subvec(v.n_elem / 2, v.n_elem - 1);
 	vec hv(v.n_elem);
-	hv.subvec(0, (v.n_elem / 2) - 1) = Hv(y1) - g*(g.t()*y2)/ballSize;
+	hv.subvec(0, (v.n_elem / 2) - 1) = Hv(y1) - g*(g.t()*y2)/(ballSize*ballSize);
 	hv.subvec((v.n_elem / 2), v.n_elem - 1) = -y1 + Hv(y2);
 	return hv;
 }

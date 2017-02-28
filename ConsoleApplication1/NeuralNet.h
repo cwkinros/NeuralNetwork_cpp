@@ -17,7 +17,8 @@ public:
 	NeuralNet(int n_i, int n_o, int n_l, int nlin);
 	NeuralNet(int n_i, int n_o, int n_l, vec ns, int nlin);
 	NeuralNet(int n_i, int n_o, int n_l, vec ns, int nlin, mat ws[]);
-	NeuralNet(int n_i, int n_o, int n_l, vec ns, mat ws[]);
+	NeuralNet(int n_i, int n_o, int n_l, vec ns, vec nlin);
+	NeuralNet::NeuralNet(int n_i, int n_o, int n_l, vec ns, mat ws[]);
 	void train_TRM(mat input, mat output, int n_steps, float ballSize, bool print, string filename, float cutoff=0.0f, bool times = false, int max_time=5*1000*60);
 	void train_TRM_cd(mat input, mat output, int n_steps, float ballSize, bool print, string filename, float cutoff = 0.0f, bool times = false, int max_time = 5 * 1000 * 60);
 	void train_GD(mat input, mat output, int n_steps, float lr, bool print, string filename, bool times = false, int max_time = 5*1000*60);
@@ -29,6 +30,7 @@ public:
 	void print_grad();
 	mat apply(mat input);
 	void forwback(mat input, mat output);
+	
 	vec Hv(vec v);
 	vec M_squiggle_v(vec v, vec g,float lambda);
 	vec Mv(vec v, vec g);
@@ -48,6 +50,7 @@ private:
 	void initialize_layers(vec ns);
 	void initialize_layers(vec ns, int nlin);
 	void initialize_layers(vec ns, mat ws[]);
+	void initialize_layers(vec ns, vec nlin);
 	mat forward_prop(mat input);
 	void back_prop(mat dz);
 	void step(float lr);
