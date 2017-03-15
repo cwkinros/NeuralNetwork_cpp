@@ -58,7 +58,7 @@ public:
 	mat g2(mat inputs);
 	mat g(mat input);
 	mat output(mat input);
-	mat back_prop(mat input);
+	mat back_prop(mat input, double reg = 1.0f);
 	
 	mat forwardHv(mat R_input, mat V);
 	mat backHv(mat R_dz, mat V);
@@ -71,12 +71,12 @@ public:
 	mat W;
 	mat GradW;
 	mat BallSizes;
+	mat zl;
 private:
 	int n;
 	int non_lin;
 	mat Inputs;
 	mat hs;
-	mat zl;
 	mat dz;
 	mat g2_hs;
 	mat g1_hs;

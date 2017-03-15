@@ -41,7 +41,7 @@ void Layer::step_TRM(vec p_star) {
 	}
 }
 
-mat Layer::back_prop(mat this_dz) {
+mat Layer::back_prop(mat this_dz, double reg) {
 	g1_hs = mat(n, this_dz.n_cols);
 	g2_hs = mat(n, this_dz.n_cols);
 	GradW.fill(0.0f);
@@ -70,7 +70,7 @@ mat Layer::back_prop(mat this_dz) {
 	}
 	
 	// update GradW
-	GradW = GradW*(1.0f / float(this_dz.n_cols));
+	GradW = GradW*(1.0f / float(this_dz.n_cols)) + reg*W;
 	
 	//GradW.print("gradW: ");
 	return next_dz;
